@@ -13,11 +13,6 @@ interface Athlete {
   profile_medium: string;
 }
 
-const STRAVA_AUTH_URL = (clientId: string, baseUrl: string) =>
-  `https://www.strava.com/oauth/authorize?client_id=${clientId}` +
-  `&response_type=code&redirect_uri=${encodeURIComponent(baseUrl + '/auth/callback')}` +
-  `&approval_prompt=auto&scope=read,activity:read`;
-
 type PRStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export default function HomePage() {
@@ -73,9 +68,7 @@ export default function HomePage() {
   }, [accessToken]);
 
   const handleLogin = () => {
-    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID ?? '';
-    const baseUrl  = process.env.NEXT_PUBLIC_BASE_URL ?? window.location.origin;
-    window.location.href = STRAVA_AUTH_URL(clientId, baseUrl);
+    window.location.href = '/api/auth/login';
   };
 
   const handleLogout = () => {

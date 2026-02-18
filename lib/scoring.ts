@@ -1,0 +1,137 @@
+import { StravaSegment, ScoredSegment, WindData, AthletePREffort } from '@/types';
+import { calcBearing, calcTailwind, SegmentWindResult } from './wind';
+import { predictSegmentTime } from './prediction';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domain constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PACE_MIN_S_PER_M = 0.10;
+const PACE_MAX_S_PER_M = 0.30;
+const PACE_WEIGHT      = 0.40;
+
+const EFFORT_CAP    = 5_000;
+const EFFORT_WEIGHT = 0.30;
+
+const AGE_MAX_YEARS = 8;
+const AGE_WEIGHT    = 0.30;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Normalisation helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+function normInvert(value: number, lo: number, hi: number): number {
+  if (hi === lo) return 0;
+  return Math.min(1, Math.max(0, (hi - value) / (hi - lo)));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Individual factor scorers
+// ─────────────────────────────────────────────────────────────────────────────
+
+function paceFactorCorrected(seg: StravaSegment): number {
+  const pace = seg.kom_time / Math.max(seg.distance, 1);
+  return Math.min(1, Math.max(0,
+    (pace - PACE_MIN_S_PER_M) / (PACE_MAX_S_PER_M - PACE_MIN_S_PER_M)
+  ));
+}
+
+function effortFactor(seg: StravaSegment): number {
+  return normInvert(seg.effort_count, 0, EFFORT_CAP);
+}
+
+function ageFactor(seg: StravaSegment & { created_at?: string }): number {
+  if (!seg.created_at) return 0.5;
+
+  const createdMs  = new Date(seg.created_at).getTime();
+  const nowMs      = Date.now();
+  const ageYears   = (nowMs - createdMs) / (1000 * 60 * 60 * 24 * 365.25);
+
+  return normInvert(ageYears, 0, AGE_MAX_YEARS);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Combined weakness score
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface WeaknessBreakdown {
+  total: number;
+  pace:    number;
+  efforts: number;
+  age:     number;
+}
+
+function komWeaknessScore(seg: StravaSegment & { created_at?: string }): WeaknessBreakdown {
+  const pF = paceFactorCorrected(seg);
+  const eF = effortFactor(seg);
+  const aF = ageFactor(seg);
+
+  const weighted =
+    pF * PACE_WEIGHT +
+    eF * EFFORT_WEIGHT +
+    aF * AGE_WEIGHT;
+
+  const total = Math.round(Math.min(1, weighted) * 100);
+
+  return {
+    total,
+    pace:    Math.round(pF * 100),
+    efforts: Math.round(eF * 100),
+    age:     Math.round(aF * 100),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Colour mapping
+// ─────────────────────────────────────────────────────────────────────────────
+
+function scoreColor(score: number): string {
+  if (score >= 75) return '#22c55e';
+  if (score >= 55) return '#84cc16';
+  if (score >= 40) return '#eab308';
+  if (score >= 25) return '#f97316';
+  return '#ef4444';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public entry point
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function scoreSegments(
+  segments: (StravaSegment & { created_at?: string; _wind?: SegmentWindResult | null })[],
+  wind: WindData,
+  prLibrary: AthletePREffort[] = [],
+): ScoredSegment[] {
+  return segments.map((seg) => {
+    const windResult = seg._wind ?? null;
+
+    const bearing = windResult?.bearing ?? calcBearing(
+      seg.start_latlng[0], seg.start_latlng[1],
+      seg.end_latlng[0],   seg.end_latlng[1],
+    );
+    const tailwindComponent = windResult
+      ? windResult.tailwindKmh
+      : calcTailwind(bearing, wind.winddirection, wind.windspeed);
+
+    const breakdown = komWeaknessScore(seg);
+    const windBonus = Math.round((tailwindComponent / 40) * 15);
+    const opportunityScore = Math.min(100, Math.max(0, breakdown.total + windBonus));
+
+    const prediction = prLibrary.length > 0
+      ? predictSegmentTime(seg, prLibrary) ?? undefined
+      : undefined;
+
+    const { _wind, ...rest } = seg as any;
+
+    return {
+      ...rest,
+      bearing,
+      tailwindComponent:  Math.round(tailwindComponent * 10) / 10,
+      komWeaknessScore:   breakdown.total,
+      komWeaknessDetail:  breakdown,
+      opportunityScore,
+      color: scoreColor(opportunityScore),
+      prediction,
+    };
+  });
+}

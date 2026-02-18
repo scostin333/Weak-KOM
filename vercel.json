@@ -1,8 +1,1 @@
-{
-  "env": {
-    "STRAVA_CLIENT_ID": "@strava_client_id",
-    "STRAVA_CLIENT_SECRET": "@strava_client_secret",
-    "NEXT_PUBLIC_BASE_URL": "@next_public_base_url",
-    "NEXT_PUBLIC_STRAVA_CLIENT_ID": "@strava_client_id"
-  }
-}
+{}

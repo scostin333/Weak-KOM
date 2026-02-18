@@ -1,4 +1,4 @@
-import { StravaSegment, ScoredSegment, WindData, AthletePREffort } from '@/types';
+import { StravaSegment, ScoredSegment, WindData, AthletePREffort, WeaknessBreakdown } from '@/types';
 import { calcBearing, calcTailwind, SegmentWindResult } from './wind';
 import { predictSegmentTime } from './prediction';
 
@@ -53,13 +53,6 @@ function ageFactor(seg: StravaSegment & { created_at?: string }): number {
 // ─────────────────────────────────────────────────────────────────────────────
 // Combined weakness score
 // ─────────────────────────────────────────────────────────────────────────────
-
-export interface WeaknessBreakdown {
-  total: number;
-  pace:    number;
-  efforts: number;
-  age:     number;
-}
 
 function komWeaknessScore(seg: StravaSegment & { created_at?: string }): WeaknessBreakdown {
   const pF = paceFactorCorrected(seg);

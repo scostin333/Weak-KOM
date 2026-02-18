@@ -183,7 +183,7 @@ export default function MapView({
 
     const incoming = new Map(segments.map(s => [s.id, s]));
 
-    for (const [id, line] of existing) {
+    for (const [id, line] of Array.from(existing)) {
       if (!incoming.has(id)) {
         layer.removeLayer(line);
         existing.delete(id);

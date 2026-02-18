@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchSegmentsInBBox } from '@/lib/strava';
+import { fetchSegmentsInBBox, fetchSegmentDetail } from '@/lib/strava';
 import { fetchWind, getSegmentTailwind } from '@/lib/wind';
 import { scoreSegments } from '@/lib/scoring';
 import { BBox } from '@/types';
@@ -16,16 +16,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 });
     }
 
-    const segments = await fetchSegmentsInBBox(bbox, accessToken);
-    if (!segments.length) {
+    const exploreSegments = await fetchSegmentsInBBox(bbox, accessToken);
+    if (!exploreSegments.length) {
       return NextResponse.json({ segments: [] });
     }
 
-    const windResults = await Promise.all(
-      segments.map(seg =>
-        getSegmentTailwind(seg.start_latlng, seg.end_latlng).catch(() => null)
-      )
-    );
+    // Enrich explore results with full segment details (average_grade,
+    // effort_count, kom_time, created_at) and wind — all in parallel.
+    const [detailResults, windResults] = await Promise.all([
+      Promise.all(
+        exploreSegments.map(seg =>
+          fetchSegmentDetail(seg.id, accessToken).catch(() => ({}))
+        )
+      ),
+      Promise.all(
+        exploreSegments.map(seg =>
+          getSegmentTailwind(seg.start_latlng, seg.end_latlng).catch(() => null)
+        )
+      ),
+    ]);
+
+    // Merge explore + detail fields (detail wins on any overlap)
+    const segments = exploreSegments.map((seg, i) => ({
+      ...seg,
+      ...detailResults[i],
+    }));
 
     const anySucceeded = windResults.some(r => r !== null);
     const fallbackWind = anySucceeded

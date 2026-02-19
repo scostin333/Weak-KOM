@@ -17,6 +17,7 @@ export interface StravaSegment {
   effort_count: number;
   athlete_count: number;
   kom_time: number;          // seconds
+  kom_name?: string;         // name of the current KOM holder
   starred: boolean;
   created_at?: string;
   kom_date?: string;         // ISO date when the current KOM was set

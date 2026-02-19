@@ -66,6 +66,7 @@ export async function fetchSegmentDetail(
   // and when it was set. date_range=overall forces the global leaderboard rather
   // than the default "following" view, which may have no entries.
   let kom_date: string | undefined;
+  let kom_name: string | undefined;
   let kom_time_lb: number | undefined;
   const lbRes = await fetch(
     `${BASE}/segments/${segmentId}/leaderboard?per_page=1&date_range=overall`,
@@ -74,7 +75,8 @@ export async function fetchSegmentDetail(
   if (lbRes.ok) {
     const lb = await lbRes.json();
     const top = lb.entries?.[0];
-    kom_date    = top?.start_date   ?? undefined;
+    kom_date    = top?.start_date    ?? undefined;
+    kom_name    = top?.athlete_name  ?? undefined;
     kom_time_lb = top?.elapsed_time != null ? Math.round(top.elapsed_time) : undefined;
   }
 
@@ -89,6 +91,7 @@ export async function fetchSegmentDetail(
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
     kom_time:       rawTime || xomsTime || kom_time_lb || 0,
+    kom_name,
     created_at:     s.created_at,
     kom_date,
     polyline,

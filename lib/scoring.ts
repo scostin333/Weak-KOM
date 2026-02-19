@@ -8,7 +8,7 @@ import { predictSegmentTime, gradeSpeedMultiplier } from './prediction';
 
 // Reference: max expected flat speed at 1 km effort for a strong club cyclist.
 // Riegel exponent models how max sustainable speed drops with distance.
-const PACE_REF_SPEED_KMH = 49;
+const PACE_REF_SPEED_KMH = 56;
 const PACE_RIEGEL_EXP    = 0.07;
 const PACE_WEIGHT        = 0.40;
 

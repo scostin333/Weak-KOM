@@ -197,21 +197,38 @@ export default function MapView({
 
       const komFmt = `${Math.floor(seg.kom_time / 60)}:${String(seg.kom_time % 60).padStart(2, '0')}`;
       const speedMph = seg.kom_time > 0 && seg.distance > 0
-        ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1) + ' mph'
+        ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1)
         : null;
       const tooltip =
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.5">` +
         `<b>${seg.name}</b><br>` +
         `Score: <b style="color:${seg.color}">${seg.opportunityScore}/100</b><br>` +
-        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph}` : ''}<br>` +
+        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
         `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
         `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
+        `</div>`;
+
+      const gradeStr = `${seg.average_grade > 0 ? '+' : ''}${seg.average_grade.toFixed(1)}%`;
+      const windStr  = `${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ${Math.abs(seg.tailwindComponent).toFixed(1)} km/h`;
+      const popup =
+        `<div style="font-family:sans-serif;font-size:12px;line-height:1.6;min-width:180px">` +
+        `<b style="font-size:13px">${seg.name}</b><br>` +
+        `<span style="color:${seg.color};font-weight:600">Score: ${seg.opportunityScore}/100</span>` +
+        `<div style="margin:6px 0;padding:6px 8px;background:#f0fdf4;border-left:3px solid ${seg.color};border-radius:3px">` +
+        (speedMph
+          ? `<span style="font-size:18px;font-weight:700;color:#111">${speedMph}</span>` +
+            `<span style="font-size:11px;color:#555"> mph avg speed</span>`
+          : `<span style="font-size:12px;color:#888">Speed unavailable</span>`) +
+        `</div>` +
+        `KOM: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
+        `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         `</div>`;
 
       if (existing.has(seg.id)) {
         const line = existing.get(seg.id)!;
         line.setStyle({ color: seg.color, weight, opacity });
         line.setTooltipContent(tooltip);
+        line.setPopupContent(popup);
       } else {
         const path = seg.polyline && seg.polyline.length > 1
           ? seg.polyline
@@ -221,6 +238,7 @@ export default function MapView({
           { color: seg.color, weight, opacity },
         );
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
+        line.bindPopup(popup, { maxWidth: 260 });
         line.on('click', () => onSelectRef.current(seg.id));
         layer.addLayer(line);
         existing.set(seg.id, line);

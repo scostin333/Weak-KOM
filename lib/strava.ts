@@ -62,19 +62,25 @@ export async function fetchSegmentDetail(
   const polyline = encodedPolyline && encodedPolyline.length > 0
     ? decodePolyline(encodedPolyline)
     : undefined;
-  // Fetch the leaderboard (top 1 entry) to get when the current KOM was set
-  // and the elapsed_time in seconds (reliable fallback when xoms is unavailable).
+  // Fetch the overall all-time leaderboard (top 1 entry) to get the KOM time
+  // and when it was set. date_range=overall forces the global leaderboard rather
+  // than the default "following" view, which may have no entries.
   let kom_date: string | undefined;
   let kom_time_lb: number | undefined;
-  const lbRes = await fetch(`${BASE}/segments/${segmentId}/leaderboard?per_page=1`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-    next: { revalidate: 3600 },
-  });
+  const lbRes = await fetch(
+    `${BASE}/segments/${segmentId}/leaderboard?per_page=1&date_range=overall`,
+    { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 3600 } },
+  );
   if (lbRes.ok) {
     const lb = await lbRes.json();
-    kom_date   = lb.entries?.[0]?.start_date   ?? undefined;
-    kom_time_lb = lb.entries?.[0]?.elapsed_time ?? undefined;
+    const top = lb.entries?.[0];
+    kom_date    = top?.start_date   ?? undefined;
+    kom_time_lb = top?.elapsed_time != null ? Math.round(top.elapsed_time) : undefined;
   }
+
+  // Priority: raw number from detail → xoms string → leaderboard elapsed_time
+  const xomsTime = parseKomTime(s.xoms?.overall ?? s.xoms?.kom);
+  const rawTime  = typeof s.kom_time === 'number' && s.kom_time > 0 ? s.kom_time : 0;
 
   return {
     average_grade: s.average_grade  ?? 0,
@@ -82,7 +88,7 @@ export async function fetchSegmentDetail(
     elevation_low:  s.elevation_low  ?? 0,
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
-    kom_time:       parseKomTime(s.xoms?.overall ?? s.xoms?.kom) || kom_time_lb || 0,
+    kom_time:       rawTime || xomsTime || kom_time_lb || 0,
     created_at:     s.created_at,
     kom_date,
     polyline,

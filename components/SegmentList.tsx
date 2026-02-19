@@ -158,7 +158,10 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
             </p>
 
             <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
-              <span className="text-gray-300">KOM {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}</span>
+              {seg.kom_time > 0
+                ? <span className="text-gray-300">KOM {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}</span>
+                : <span className="text-gray-500">KOM —</span>
+              }
               {seg.userBestTime && (
                 <span className="text-blue-400">
                   PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta ?? 0)})

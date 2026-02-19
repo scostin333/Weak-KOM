@@ -1,4 +1,5 @@
 import { StravaSegment, BBox } from '@/types';
+import { decodePolyline } from './polyline';
 
 const BASE = 'https://www.strava.com/api/v3';
 
@@ -57,6 +58,10 @@ export async function fetchSegmentDetail(
   });
   if (!res.ok) return {};
   const s = await res.json();
+  const encodedPolyline: string | undefined = s.map?.polyline;
+  const polyline = encodedPolyline && encodedPolyline.length > 0
+    ? decodePolyline(encodedPolyline)
+    : undefined;
   return {
     average_grade: s.average_grade  ?? 0,
     elevation_high: s.elevation_high ?? 0,
@@ -65,6 +70,7 @@ export async function fetchSegmentDetail(
     athlete_count:  s.athlete_count  ?? 0,
     kom_time:       parseKomTime(s.xoms?.overall ?? s.xoms?.kom),
     created_at:     s.created_at,
+    polyline,
   };
 }
 

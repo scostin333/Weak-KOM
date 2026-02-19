@@ -19,6 +19,7 @@ export interface StravaSegment {
   kom_time: number;          // seconds
   starred: boolean;
   created_at?: string;
+  polyline?: [number, number][];  // decoded GPS path (lat/lng pairs)
 }
 
 export interface WindData {

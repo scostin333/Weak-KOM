@@ -210,8 +210,11 @@ export default function MapView({
         line.setStyle({ color: seg.color, weight, opacity });
         line.setTooltipContent(tooltip);
       } else {
+        const path = seg.polyline && seg.polyline.length > 1
+          ? seg.polyline
+          : [seg.start_latlng, seg.end_latlng];
         const line = L.polyline(
-          [seg.start_latlng, seg.end_latlng],
+          path,
           { color: seg.color, weight, opacity },
         );
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });

@@ -169,7 +169,7 @@ export default function HomePage() {
                 )}
                 <button
                   onClick={() => setInfoOpen(true)}
-                  className="text-gray-500 hover:text-gray-300 transition text-base leading-none ml-0.5"
+                  className="text-gray-500 hover:text-gray-300 transition text-xl leading-none ml-1 p-0.5"
                   aria-label="How scoring works"
                   title="How scoring works"
                 >

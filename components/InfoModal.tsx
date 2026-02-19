@@ -131,6 +131,44 @@ score = clamp(base×100 + wind_bonus, 0, 100)`}
               </pre>
             </div>
           </div>
+
+          {/* Confidence */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+              Prediction confidence (0–100)
+            </p>
+            <p className="text-xs text-gray-400 leading-relaxed mb-3">
+              When your Strava PR history is loaded, the app predicts your time on each
+              segment by interpolating across your efforts on similar segments (matched by
+              distance and grade). The <span className="text-white font-semibold">Confidence</span> score
+              tells you how reliable that prediction is.
+            </p>
+            <div className="space-y-4">
+              <Factor name="Coverage" weight="max 40 pts" color="#f97316">
+                How many of your past PRs were close enough to use as references (up to 5).
+                Each usable reference adds 8 pts. A prediction with only 1 reference is
+                inherently less reliable than one backed by 5.
+              </Factor>
+              <Factor name="Proximity" weight="max 40 pts" color="#a78bfa">
+                How well the reference segments match the target in distance and grade.
+                Measured via a Gaussian kernel — references with very similar difficulty
+                contribute more weight. A high total kernel weight means the references
+                are a close match.
+              </Factor>
+              <Factor name="Consistency" weight="max 20 pts" color="#38bdf8">
+                How consistent your pace is across the reference segments after
+                grade-adjusting each effort to the target gradient. Low variation
+                (coefficient of variation ≤ 0) scores the full 20 pts;
+                above ~20% variation the score falls to 0.
+              </Factor>
+            </div>
+            <div className="mt-3 rounded-lg bg-gray-900/60 border border-gray-700 px-3 py-2.5">
+              <pre className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap font-mono">
+{`confidence = coverage + proximity + consistency
+High ≥ 70  ·  Medium ≥ 45  ·  Low < 45`}
+              </pre>
+            </div>
+          </div>
         </div>
       </div>
     </div>

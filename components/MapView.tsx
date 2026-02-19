@@ -196,11 +196,12 @@ export default function MapView({
       const opacity    = isSelected ? 1 : 0.85;
 
       const komFmt = `${Math.floor(seg.kom_time / 60)}:${String(seg.kom_time % 60).padStart(2, '0')}`;
+      const speedMph = (seg.distance / 1609.34) / (seg.kom_time / 3600);
       const tooltip =
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.5">` +
         `<b>${seg.name}</b><br>` +
         `Score: <b style="color:${seg.color}">${seg.opportunityScore}/100</b><br>` +
-        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km<br>` +
+        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km · ${speedMph.toFixed(1)} mph<br>` +
         `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
         `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
         `</div>`;

@@ -15,7 +15,6 @@ const PACE_WEIGHT        = 0.40;
 const EFFORT_CAP    = 5_000;
 const EFFORT_WEIGHT = 0.30;
 
-const KOM_AGE_MAX_YEARS = 5;   // KOM standing ≥ 5 years → full score
 const AGE_WEIGHT        = 0.30;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,15 +49,10 @@ function effortFactor(seg: StravaSegment): number {
   return normInvert(seg.effort_count, 0, EFFORT_CAP);
 }
 
-function ageFactor(seg: StravaSegment): number {
-  if (!seg.kom_date) return 0.5;
-
-  const setMs    = new Date(seg.kom_date).getTime();
-  const nowMs    = Date.now();
-  const ageYears = (nowMs - setMs) / (1000 * 60 * 60 * 24 * 365.25);
-
-  // Recently set KOM → higher score (hasn't been battle-tested yet).
-  return normInvert(ageYears, 0, KOM_AGE_MAX_YEARS);
+function ageFactor(_seg: StravaSegment): number {
+  // Strava's leaderboard API restricts KOM-date data to Summit subscribers,
+  // so we can't reliably compute an age factor. Return 0.5 (neutral).
+  return 0.5;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

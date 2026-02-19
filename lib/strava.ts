@@ -47,6 +47,10 @@ function parseKomTime(t: string | undefined): number {
  * The /segments/{id} response has average_grade, effort_count, athlete_count,
  * created_at, and xoms.overall (the KOM time as a formatted string).
  * Results are cached server-side for 1 hour.
+ *
+ * Note: we no longer call the leaderboard endpoint. Strava restricts leaderboard
+ * entries to athletes you follow (a Summit-tier restriction), so it always
+ * returned empty entries — burning 20 extra API calls per search for nothing.
  */
 export async function fetchSegmentDetail(
   segmentId: number,
@@ -58,46 +62,25 @@ export async function fetchSegmentDetail(
   });
   if (!res.ok) return {};
   const s = await res.json();
+
   const encodedPolyline: string | undefined = s.map?.polyline;
   const polyline = encodedPolyline && encodedPolyline.length > 0
     ? decodePolyline(encodedPolyline)
     : undefined;
-  // Fetch the top-1 leaderboard entry to get the KOM holder name, time, and date.
-  // No date_range filter → Strava returns the all-time overall leaderboard by default.
-  // (date_range only accepts 'this_year' | 'this_month' | 'this_week' | 'today';
-  //  passing an invalid value like 'overall' causes a 400 and drops all lb data.)
-  let kom_date: string | undefined;
-  let kom_name: string | undefined;
-  let kom_time_lb: number | undefined;
-  const lbRes = await fetch(
-    `${BASE}/segments/${segmentId}/leaderboard?per_page=1`,
-    { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 3600 } },
-  );
-  if (lbRes.ok) {
-    const lb = await lbRes.json();
-    const top = lb.entries?.[0];
-    console.log(`[lb ${segmentId}] entry_count=${lb.entry_count} athlete_name=${top?.athlete_name} elapsed=${top?.elapsed_time}`);
-    kom_date    = top?.start_date    ?? undefined;
-    kom_name    = top?.athlete_name  ?? undefined;
-    kom_time_lb = top?.elapsed_time != null ? Math.round(top.elapsed_time) : undefined;
-  } else {
-    console.error(`[lb ${segmentId}] HTTP ${lbRes.status}`);
-  }
 
-  // Priority: raw number from detail → xoms string → leaderboard elapsed_time
+  // KOM time: Strava returns it as a formatted string in xoms.overall / xoms.kom.
+  // Log the raw xoms so we can see the exact format.
+  console.log(`[detail ${segmentId}] xoms=${JSON.stringify(s.xoms)} kom_time=${s.kom_time}`);
   const xomsTime = parseKomTime(s.xoms?.overall ?? s.xoms?.kom);
-  const rawTime  = typeof s.kom_time === 'number' && s.kom_time > 0 ? s.kom_time : 0;
 
   return {
-    average_grade: s.average_grade  ?? 0,
+    average_grade:  s.average_grade  ?? 0,
     elevation_high: s.elevation_high ?? 0,
     elevation_low:  s.elevation_low  ?? 0,
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
-    kom_time:       rawTime || xomsTime || kom_time_lb || 0,
-    kom_name,
+    kom_time:       xomsTime,
     created_at:     s.created_at,
-    kom_date,
     polyline,
   };
 }

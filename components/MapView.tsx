@@ -205,7 +205,7 @@ export default function MapView({
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.5">` +
         `<b>${seg.name}</b><br>` +
         `Score: <b style="color:${seg.color}">${seg.opportunityScore}/100</b><br>` +
-        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}${seg.kom_name ? ` · ${seg.kom_name}` : ''}<br>` +
+        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
         `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
         `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
         `</div>`;
@@ -222,7 +222,7 @@ export default function MapView({
             `<span style="font-size:11px;color:#555"> mph avg speed</span>`
           : `<span style="font-size:12px;color:#888">Speed unavailable</span>`) +
         `</div>` +
-        `KOM: <b>${komFmt}</b>${seg.kom_name ? ` &nbsp;·&nbsp; <span style="color:#555">${seg.kom_name}</span>` : ''} &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
+        `KOM: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         `</div>`;
 

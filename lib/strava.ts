@@ -71,18 +71,17 @@ export async function fetchSegmentDetail(
   let kom_time_lb: number | undefined;
   const lbRes = await fetch(
     `${BASE}/segments/${segmentId}/leaderboard?per_page=1`,
-    { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' },
+    { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 3600 } },
   );
   if (lbRes.ok) {
     const lb = await lbRes.json();
     const top = lb.entries?.[0];
-    console.log(`[lb ${segmentId}] status=${lbRes.status} entry_count=${lb.entry_count} top_keys=${top ? Object.keys(top).join(',') : 'none'} athlete_name=${top?.athlete_name} elapsed_time=${top?.elapsed_time}`);
+    console.log(`[lb ${segmentId}] entry_count=${lb.entry_count} athlete_name=${top?.athlete_name} elapsed=${top?.elapsed_time}`);
     kom_date    = top?.start_date    ?? undefined;
     kom_name    = top?.athlete_name  ?? undefined;
     kom_time_lb = top?.elapsed_time != null ? Math.round(top.elapsed_time) : undefined;
   } else {
-    const body = await lbRes.text();
-    console.error(`[lb ${segmentId}] FAILED status=${lbRes.status} body=${body.slice(0, 200)}`);
+    console.error(`[lb ${segmentId}] HTTP ${lbRes.status}`);
   }
 
   // Priority: raw number from detail → xoms string → leaderboard elapsed_time
@@ -108,7 +107,10 @@ async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment
   const bounds = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng}`;
   const url = `${BASE}/segments/explore?bounds=${bounds}&activity_type=riding`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    console.error(`[explore] HTTP ${res.status} bounds=${bounds}`);
+    return [];
+  }
   const data = await res.json();
   // Explore returns ExplorerSegment objects — normalise to our StravaSegment shape.
   return (data.segments ?? []).map((s: any): StravaSegment => ({

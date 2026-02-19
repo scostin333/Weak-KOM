@@ -67,6 +67,18 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ segments: scored, wind: displayWind });
   } catch (e: any) {
+    if (e.message === 'RATE_LIMIT') {
+      return NextResponse.json(
+        { error: 'Strava rate limit reached. Please wait a minute and try again.' },
+        { status: 429 },
+      );
+    }
+    if (e.message === 'UNAUTHORIZED') {
+      return NextResponse.json(
+        { error: 'Strava session expired. Please disconnect and reconnect your account.' },
+        { status: 401 },
+      );
+    }
     console.error('[/api/segments]', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

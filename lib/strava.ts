@@ -108,6 +108,8 @@ async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment
   const url = `${BASE}/segments/explore?bounds=${bounds}&activity_type=riding`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) {
+    if (res.status === 429) throw new Error('RATE_LIMIT');
+    if (res.status === 401) throw new Error('UNAUTHORIZED');
     console.error(`[explore] HTTP ${res.status} bounds=${bounds}`);
     return [];
   }

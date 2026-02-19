@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     const token = await getStravaToken(code);
-    const base = process.env.NEXT_PUBLIC_BASE_URL ?? 'http://localhost:3000';
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? `https://${req.headers.get('host')}`;
     const url = new URL('/', base);
     url.searchParams.set('access_token', token.access_token);
     url.searchParams.set('refresh_token', token.refresh_token);

@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
     url.searchParams.set('refresh_token', token.refresh_token);
     url.searchParams.set('athlete', JSON.stringify(token.athlete));
     return NextResponse.redirect(url);
-  } catch (e) {
-    return NextResponse.redirect(new URL('/?error=auth_failed', req.url));
+  } catch (e: any) {
+    const errorCode = e?.status === 403 ? 'athlete_limit' : 'auth_failed';
+    return NextResponse.redirect(new URL(`/?error=${errorCode}`, req.url));
   }
 }

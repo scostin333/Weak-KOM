@@ -14,7 +14,10 @@ export async function getStravaToken(code: string) {
       grant_type: 'authorization_code',
     }),
   });
-  if (!res.ok) throw new Error('Token exchange failed');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw Object.assign(new Error('Token exchange failed'), { status: res.status, stravaError: err });
+  }
   return res.json();
 }
 

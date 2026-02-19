@@ -45,7 +45,11 @@ export default function HomePage() {
       }
       window.history.replaceState({}, '', '/');
     }
-    if (err) setError('Authentication failed. Please try again.');
+    if (err === 'athlete_limit') {
+      setError('This app has reached Strava\'s limit for connected athletes. The owner needs to apply for Strava API production access to allow more users.');
+    } else if (err) {
+      setError('Authentication failed. Please try again.');
+    }
   }, []);
 
   // ── Fetch PR library whenever we get a token ─────────────────────────────

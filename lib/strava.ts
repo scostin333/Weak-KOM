@@ -71,14 +71,18 @@ export async function fetchSegmentDetail(
   let kom_time_lb: number | undefined;
   const lbRes = await fetch(
     `${BASE}/segments/${segmentId}/leaderboard?per_page=1`,
-    { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 3600 } },
+    { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' },
   );
   if (lbRes.ok) {
     const lb = await lbRes.json();
     const top = lb.entries?.[0];
+    console.log(`[lb ${segmentId}] status=${lbRes.status} entry_count=${lb.entry_count} top_keys=${top ? Object.keys(top).join(',') : 'none'} athlete_name=${top?.athlete_name} elapsed_time=${top?.elapsed_time}`);
     kom_date    = top?.start_date    ?? undefined;
     kom_name    = top?.athlete_name  ?? undefined;
     kom_time_lb = top?.elapsed_time != null ? Math.round(top.elapsed_time) : undefined;
+  } else {
+    const body = await lbRes.text();
+    console.error(`[lb ${segmentId}] FAILED status=${lbRes.status} body=${body.slice(0, 200)}`);
   }
 
   // Priority: raw number from detail → xoms string → leaderboard elapsed_time

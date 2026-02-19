@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
+import InfoModal from '@/components/InfoModal';
 import { ScoredSegment, BBox, AthletePREffort } from '@/types';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
@@ -23,6 +24,8 @@ export default function HomePage() {
   const [loading,     setLoading    ] = useState(false);
   const [error,       setError      ] = useState<string | null>(null);
   const [wind,        setWind       ] = useState<{ windspeed: number; winddirection: number } | null>(null);
+
+  const [infoOpen,   setInfoOpen  ] = useState(false);
 
   const [prLibrary,  setPrLibrary ] = useState<AthletePREffort[]>([]);
   const [prStatus,   setPrStatus  ] = useState<PRStatus>('idle');
@@ -156,14 +159,22 @@ export default function HomePage() {
         <aside className="w-80 shrink-0 bg-gray-800 border-r border-gray-700 flex flex-col">
           <div className="p-3 border-b border-gray-700 shrink-0 space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-200">
+              <h2 className="text-sm font-semibold text-gray-200 flex items-center gap-1.5">
                 Segments
                 {segments.length > 0 && (
-                  <span className="ml-1 text-gray-400">({segments.length})</span>
+                  <span className="text-gray-400">({segments.length})</span>
                 )}
                 {predictedCount > 0 && (
-                  <span className="ml-1 text-blue-400 text-xs">· {predictedCount} predicted</span>
+                  <span className="text-blue-400 text-xs">· {predictedCount} predicted</span>
                 )}
+                <button
+                  onClick={() => setInfoOpen(true)}
+                  className="text-gray-500 hover:text-gray-300 transition text-base leading-none ml-0.5"
+                  aria-label="How scoring works"
+                  title="How scoring works"
+                >
+                  ⓘ
+                </button>
               </h2>
               {loading && (
                 <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -220,6 +231,8 @@ export default function HomePage() {
           />
         </main>
       </div>
+
+      {infoOpen && <InfoModal onClose={() => setInfoOpen(false)} />}
     </div>
   );
 }

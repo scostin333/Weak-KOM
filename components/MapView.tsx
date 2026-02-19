@@ -192,6 +192,7 @@ export default function MapView({
 
     for (const seg of segments) {
       const isSelected = selected === seg.id;
+      const color      = isSelected ? '#a855f7' : seg.color;
       const weight     = isSelected ? 7 : 4;
       const opacity    = isSelected ? 1 : 0.85;
 
@@ -228,7 +229,7 @@ export default function MapView({
 
       if (existing.has(seg.id)) {
         const line = existing.get(seg.id)!;
-        line.setStyle({ color: seg.color, weight, opacity });
+        line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
       } else {
@@ -237,7 +238,7 @@ export default function MapView({
           : [seg.start_latlng, seg.end_latlng];
         const line = L.polyline(
           path,
-          { color: seg.color, weight, opacity },
+          { color, weight, opacity },
         );
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
         line.bindPopup(popup, { maxWidth: 260 });

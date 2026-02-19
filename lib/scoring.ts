@@ -10,10 +10,10 @@ import { predictSegmentTime, gradeSpeedMultiplier } from './prediction';
 // Riegel exponent models how max sustainable speed drops with distance.
 const PACE_REF_SPEED_KMH = 56;
 const PACE_RIEGEL_EXP    = 0.07;
-const PACE_WEIGHT        = 0.40;
+const PACE_WEIGHT        = 0.50;
 
 const EFFORT_CAP    = 5_000;
-const EFFORT_WEIGHT = 0.30;
+const EFFORT_WEIGHT = 0.20;
 
 const AGE_WEIGHT        = 0.30;
 

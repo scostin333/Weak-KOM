@@ -73,7 +73,9 @@ export async function fetchSegmentDetail(
   // KOM time: Strava returns it as a formatted string in xoms.overall / xoms.kom.
   // Log the raw xoms so we can see the exact format.
   console.log(`[detail ${segmentId}] xoms=${JSON.stringify(s.xoms)} kom_time=${s.kom_time}`);
-  const xomsTime = parseKomTime(s.xoms?.overall ?? s.xoms?.kom);
+  // xoms.overall is a label string (e.g. "KOM"), not a time — use xoms.kom.
+  // Fall back to overall only if kom is absent.
+  const xomsTime = parseKomTime(s.xoms?.kom) || parseKomTime(s.xoms?.overall);
 
   return {
     average_grade:  s.average_grade  ?? 0,

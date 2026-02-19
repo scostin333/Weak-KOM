@@ -62,6 +62,17 @@ export async function fetchSegmentDetail(
   const polyline = encodedPolyline && encodedPolyline.length > 0
     ? decodePolyline(encodedPolyline)
     : undefined;
+  // Fetch the leaderboard (top 1 entry) to get when the current KOM was set.
+  let kom_date: string | undefined;
+  const lbRes = await fetch(`${BASE}/segments/${segmentId}/leaderboard?per_page=1`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+    next: { revalidate: 3600 },
+  });
+  if (lbRes.ok) {
+    const lb = await lbRes.json();
+    kom_date = lb.entries?.[0]?.start_date ?? undefined;
+  }
+
   return {
     average_grade: s.average_grade  ?? 0,
     elevation_high: s.elevation_high ?? 0,
@@ -70,6 +81,7 @@ export async function fetchSegmentDetail(
     athlete_count:  s.athlete_count  ?? 0,
     kom_time:       parseKomTime(s.xoms?.overall ?? s.xoms?.kom),
     created_at:     s.created_at,
+    kom_date,
     polyline,
   };
 }

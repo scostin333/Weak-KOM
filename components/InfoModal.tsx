@@ -96,11 +96,11 @@ export default function InfoModal({ onClose }: Props) {
                 a big opportunity. Once a segment has been tried 5,000+ times this
                 factor scores 0.
               </Factor>
-              <Factor name="Age" weight="30%" color="#38bdf8">
-                Based on when the segment was created. Newer segments tend to have
-                less-optimised records because fewer riders have specifically targeted them,
-                making it easier to set the benchmark. Segments older than 8 years score 0
-                on this factor.
+              <Factor name="KOM Age" weight="30%" color="#38bdf8">
+                How long the current KOM has been standing. A record that has gone
+                unchallenged for years is more likely to be beatable — equipment,
+                training, and competition have all moved on. A KOM set 5+ years ago
+                scores 100; one set in the last few months scores near 0.
               </Factor>
             </div>
           </div>

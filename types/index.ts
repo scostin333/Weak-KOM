@@ -19,6 +19,7 @@ export interface StravaSegment {
   kom_time: number;          // seconds
   starred: boolean;
   created_at?: string;
+  kom_date?: string;         // ISO date when the current KOM was set
   polyline?: [number, number][];  // decoded GPS path (lat/lng pairs)
 }
 
@@ -31,7 +32,7 @@ export interface WeaknessBreakdown {
   total:   number;           // 0–100 combined
   pace:    number;           // 0–100 pace sub-score
   efforts: number;           // 0–100 effort-count sub-score
-  age:     number;           // 0–100 segment-age sub-score
+  age:     number;           // 0–100 KOM-standing-age sub-score
 }
 
 // ── Athlete PR modelling ──────────────────────────────────────────────────────

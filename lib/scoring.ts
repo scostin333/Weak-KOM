@@ -13,8 +13,8 @@ const PACE_WEIGHT      = 0.40;
 const EFFORT_CAP    = 5_000;
 const EFFORT_WEIGHT = 0.30;
 
-const AGE_MAX_YEARS = 8;
-const AGE_WEIGHT    = 0.30;
+const KOM_AGE_MAX_YEARS = 5;   // KOM standing ≥ 5 years → full score
+const AGE_WEIGHT        = 0.30;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Normalisation helper
@@ -40,21 +40,22 @@ function effortFactor(seg: StravaSegment): number {
   return normInvert(seg.effort_count, 0, EFFORT_CAP);
 }
 
-function ageFactor(seg: StravaSegment & { created_at?: string }): number {
-  if (!seg.created_at) return 0.5;
+function ageFactor(seg: StravaSegment): number {
+  if (!seg.kom_date) return 0.5;
 
-  const createdMs  = new Date(seg.created_at).getTime();
-  const nowMs      = Date.now();
-  const ageYears   = (nowMs - createdMs) / (1000 * 60 * 60 * 24 * 365.25);
+  const setMs    = new Date(seg.kom_date).getTime();
+  const nowMs    = Date.now();
+  const ageYears = (nowMs - setMs) / (1000 * 60 * 60 * 24 * 365.25);
 
-  return normInvert(ageYears, 0, AGE_MAX_YEARS);
+  // Older standing KOM → higher score (more beatable); inverted from segment-creation logic.
+  return Math.min(1, Math.max(0, ageYears / KOM_AGE_MAX_YEARS));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Combined weakness score
 // ─────────────────────────────────────────────────────────────────────────────
 
-function komWeaknessScore(seg: StravaSegment & { created_at?: string }): WeaknessBreakdown {
+function komWeaknessScore(seg: StravaSegment): WeaknessBreakdown {
   const pF = paceFactorCorrected(seg);
   const eF = effortFactor(seg);
   const aF = ageFactor(seg);
@@ -91,7 +92,7 @@ function scoreColor(score: number): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function scoreSegments(
-  segments: (StravaSegment & { created_at?: string; _wind?: SegmentWindResult | null })[],
+  segments: (StravaSegment & { _wind?: SegmentWindResult | null })[],
   wind: WindData,
   prLibrary: AthletePREffort[] = [],
 ): ScoredSegment[] {

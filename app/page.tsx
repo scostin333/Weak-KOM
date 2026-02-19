@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
 import InfoModal from '@/components/InfoModal';
 import { ScoredSegment, BBox, AthletePREffort } from '@/types';
+import { useEffect } from 'react';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -24,19 +25,18 @@ export default function HomePage() {
   const [loading,     setLoading    ] = useState(false);
   const [error,       setError      ] = useState<string | null>(null);
   const [wind,        setWind       ] = useState<{ windspeed: number; winddirection: number } | null>(null);
-
-  const [infoOpen,   setInfoOpen  ] = useState(false);
-
-  const [prLibrary,  setPrLibrary ] = useState<AthletePREffort[]>([]);
-  const [prStatus,   setPrStatus  ] = useState<PRStatus>('idle');
-  const [prCount,    setPrCount   ] = useState(0);
+  const [infoOpen,    setInfoOpen   ] = useState(false);
+  const [prLibrary,   setPrLibrary  ] = useState<AthletePREffort[]>([]);
+  const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
+  const [prCount,     setPrCount    ] = useState(0);
+  const [mobileTab,   setMobileTab  ] = useState<'map' | 'list'>('map');
 
   // ── OAuth token ingestion from URL ───────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const at          = params.get('access_token');
-    const athleteStr  = params.get('athlete');
-    const err         = params.get('error');
+    const at         = params.get('access_token');
+    const athleteStr = params.get('athlete');
+    const err        = params.get('error');
 
     if (at) {
       setAccessToken(at);
@@ -70,10 +70,7 @@ export default function HomePage() {
       });
   }, [accessToken]);
 
-  const handleLogin = () => {
-    window.location.href = '/api/auth/login';
-  };
-
+  const handleLogin  = () => { window.location.href = '/api/auth/login'; };
   const handleLogout = () => {
     setAccessToken(null);
     setAthlete(null);
@@ -105,8 +102,11 @@ export default function HomePage() {
       if ((data.segments ?? []).length === 0) {
         setError('No segments found in this area. Try a different region.');
       }
+      // Auto-show segment list on mobile once results arrive
+      setMobileTab('list');
     } catch (e: any) {
       setError(e.message);
+      setMobileTab('list');
     } finally {
       setLoading(false);
     }
@@ -119,15 +119,81 @@ export default function HomePage() {
 
   const predictedCount = segments.filter(s => s.prediction).length;
 
+  // ── Sidebar panel (shared by desktop aside + mobile overlay) ─────────────
+  const sidebarPanel = (
+    <>
+      <div className="p-3 border-b border-gray-700 shrink-0 space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-200 flex items-center gap-1.5">
+            Segments
+            {segments.length > 0 && (
+              <span className="text-gray-400">({segments.length})</span>
+            )}
+            {predictedCount > 0 && (
+              <span className="text-blue-400 text-xs">· {predictedCount} predicted</span>
+            )}
+            <button
+              onClick={() => setInfoOpen(true)}
+              className="text-gray-500 hover:text-gray-300 transition text-xl leading-none ml-1 p-0.5"
+              aria-label="How scoring works"
+              title="How scoring works"
+            >
+              ⓘ
+            </button>
+          </h2>
+          {loading && (
+            <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex items-center gap-1 flex-wrap">
+          {[
+            { color: '#ef4444', label: 'Hard' },
+            { color: '#f97316', label: '' },
+            { color: '#eab308', label: '' },
+            { color: '#84cc16', label: '' },
+            { color: '#22c55e', label: 'Easy' },
+          ].map(({ color, label }) => (
+            <div key={color} className="flex items-center gap-0.5">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
+              {label && <span className="text-xs text-gray-400">{label}</span>}
+            </div>
+          ))}
+          <span className="text-xs text-gray-500 ml-1">Opportunity</span>
+        </div>
+
+        {!accessToken && (
+          <p className="text-xs text-gray-500 italic">
+            Connect Strava to unlock PR predictions
+          </p>
+        )}
+      </div>
+
+      {error && (
+        <div className="m-3 p-2 bg-red-900/40 border border-red-700 rounded text-xs text-red-300">
+          {error}
+        </div>
+      )}
+
+      <SegmentList
+        segments={segments}
+        selected={selected}
+        onSelect={setSelected}
+        showPredictions={prStatus === 'ready'}
+      />
+    </>
+  );
+
   return (
     <div className="flex flex-col h-screen bg-gray-900">
       {/* ── Header ── */}
-      <header className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700 shrink-0">
-        <div className="flex items-center gap-3">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-orange-500">
+      <header className="flex items-center justify-between px-3 py-2 md:px-4 md:py-3 bg-gray-800 border-b border-gray-700 shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-orange-500 shrink-0">
             <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
           </svg>
-          <span className="text-lg font-bold text-white">Weak KOM</span>
+          <span className="text-base md:text-lg font-bold text-white">Weak KOM</span>
 
           {wind && (
             <span className="text-xs text-gray-400 hidden sm:block">
@@ -135,7 +201,6 @@ export default function HomePage() {
             </span>
           )}
 
-          {/* PR status pill */}
           {accessToken && (
             <span className={`
               text-xs px-2 py-0.5 rounded-full font-medium hidden sm:inline-block
@@ -154,73 +219,14 @@ export default function HomePage() {
       </header>
 
       {/* ── Body ── */}
-      <div className="flex flex-1 min-h-0">
-        {/* Sidebar */}
-        <aside className="w-80 shrink-0 bg-gray-800 border-r border-gray-700 flex flex-col">
-          <div className="p-3 border-b border-gray-700 shrink-0 space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-200 flex items-center gap-1.5">
-                Segments
-                {segments.length > 0 && (
-                  <span className="text-gray-400">({segments.length})</span>
-                )}
-                {predictedCount > 0 && (
-                  <span className="text-blue-400 text-xs">· {predictedCount} predicted</span>
-                )}
-                <button
-                  onClick={() => setInfoOpen(true)}
-                  className="text-gray-500 hover:text-gray-300 transition text-xl leading-none ml-1 p-0.5"
-                  aria-label="How scoring works"
-                  title="How scoring works"
-                >
-                  ⓘ
-                </button>
-              </h2>
-              {loading && (
-                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-              )}
-            </div>
+      <div className="flex flex-1 min-h-0 relative">
 
-            {/* Legend */}
-            <div className="flex items-center gap-1 flex-wrap">
-              {[
-                { color: '#ef4444', label: 'Hard' },
-                { color: '#f97316', label: '' },
-                { color: '#eab308', label: '' },
-                { color: '#84cc16', label: '' },
-                { color: '#22c55e', label: 'Easy' },
-              ].map(({ color, label }) => (
-                <div key={color} className="flex items-center gap-0.5">
-                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} />
-                  {label && <span className="text-xs text-gray-400">{label}</span>}
-                </div>
-              ))}
-              <span className="text-xs text-gray-500 ml-1">Opportunity</span>
-            </div>
-
-            {/* Login prompt when logged out */}
-            {!accessToken && (
-              <p className="text-xs text-gray-500 italic">
-                Connect Strava to unlock PR predictions
-              </p>
-            )}
-          </div>
-
-          {error && (
-            <div className="m-3 p-2 bg-red-900/40 border border-red-700 rounded text-xs text-red-300">
-              {error}
-            </div>
-          )}
-
-          <SegmentList
-            segments={segments}
-            selected={selected}
-            onSelect={setSelected}
-            showPredictions={prStatus === 'ready'}
-          />
+        {/* Desktop sidebar — always visible on md+ */}
+        <aside className="hidden md:flex w-80 shrink-0 bg-gray-800 border-r border-gray-700 flex-col">
+          {sidebarPanel}
         </aside>
 
-        {/* Map */}
+        {/* Map — always rendered so Leaflet stays initialised */}
         <main className="flex-1 relative">
           <MapView
             segments={segments}
@@ -230,7 +236,34 @@ export default function HomePage() {
             loading={loading}
           />
         </main>
+
+        {/* Mobile segment list overlay */}
+        {mobileTab === 'list' && (
+          <div className="md:hidden absolute inset-0 z-[400] bg-gray-800 flex flex-col">
+            {sidebarPanel}
+          </div>
+        )}
       </div>
+
+      {/* ── Mobile bottom tab bar ── */}
+      <nav className="md:hidden flex shrink-0 bg-gray-800 border-t border-gray-700">
+        <button
+          onClick={() => setMobileTab('map')}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+            mobileTab === 'map' ? 'text-orange-400' : 'text-gray-400'
+          }`}
+        >
+          Map
+        </button>
+        <button
+          onClick={() => setMobileTab('list')}
+          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+            mobileTab === 'list' ? 'text-orange-400' : 'text-gray-400'
+          }`}
+        >
+          Segments{segments.length > 0 ? ` (${segments.length})` : ''}
+        </button>
+      </nav>
 
       {infoOpen && <InfoModal onClose={() => setInfoOpen(false)} />}
     </div>

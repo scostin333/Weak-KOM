@@ -33,12 +33,14 @@ export async function refreshStravaToken(refreshToken: string) {
   return res.json();
 }
 
-/** Parse "M:SS" or "H:MM:SS" KOM time strings from Strava's xoms field. */
+/** Parse KOM time strings from Strava's xoms field.
+ *  Handles "SS" (sub-minute), "M:SS", and "H:MM:SS". */
 function parseKomTime(t: string | undefined): number {
   if (!t) return 0;
   const parts = t.split(':').map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 1 && !isNaN(parts[0])) return parts[0]; // e.g. "45"
   return 0;
 }
 

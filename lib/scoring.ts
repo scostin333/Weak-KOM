@@ -47,8 +47,8 @@ function ageFactor(seg: StravaSegment): number {
   const nowMs    = Date.now();
   const ageYears = (nowMs - setMs) / (1000 * 60 * 60 * 24 * 365.25);
 
-  // Older standing KOM → higher score (more beatable); inverted from segment-creation logic.
-  return Math.min(1, Math.max(0, ageYears / KOM_AGE_MAX_YEARS));
+  // Recently set KOM → higher score (hasn't been battle-tested yet).
+  return normInvert(ageYears, 0, KOM_AGE_MAX_YEARS);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

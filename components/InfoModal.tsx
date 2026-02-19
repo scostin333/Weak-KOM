@@ -97,10 +97,10 @@ export default function InfoModal({ onClose }: Props) {
                 factor scores 0.
               </Factor>
               <Factor name="KOM Age" weight="30%" color="#38bdf8">
-                How long the current KOM has been standing. A record that has gone
-                unchallenged for years is more likely to be beatable — equipment,
-                training, and competition have all moved on. A KOM set 5+ years ago
-                scores 100; one set in the last few months scores near 0.
+                How long the current KOM has been standing. A long-standing record has
+                already withstood years of competition and is harder to beat. A recently
+                set KOM hasn&apos;t been fully tested yet — scores 100 if set this week,
+                dropping to 0 once it has stood for 5+ years.
               </Factor>
             </div>
           </div>

@@ -62,14 +62,15 @@ export async function fetchSegmentDetail(
   const polyline = encodedPolyline && encodedPolyline.length > 0
     ? decodePolyline(encodedPolyline)
     : undefined;
-  // Fetch the overall all-time leaderboard (top 1 entry) to get the KOM time
-  // and when it was set. date_range=overall forces the global leaderboard rather
-  // than the default "following" view, which may have no entries.
+  // Fetch the top-1 leaderboard entry to get the KOM holder name, time, and date.
+  // No date_range filter → Strava returns the all-time overall leaderboard by default.
+  // (date_range only accepts 'this_year' | 'this_month' | 'this_week' | 'today';
+  //  passing an invalid value like 'overall' causes a 400 and drops all lb data.)
   let kom_date: string | undefined;
   let kom_name: string | undefined;
   let kom_time_lb: number | undefined;
   const lbRes = await fetch(
-    `${BASE}/segments/${segmentId}/leaderboard?per_page=1&date_range=overall`,
+    `${BASE}/segments/${segmentId}/leaderboard?per_page=1`,
     { headers: { Authorization: `Bearer ${accessToken}` }, next: { revalidate: 3600 } },
   );
   if (lbRes.ok) {

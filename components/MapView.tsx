@@ -92,7 +92,7 @@ export default function MapView({
       const map = L.map(containerRef.current, {
         zoomControl: true,
         preferCanvas: true,
-      }).setView([41.8781, -87.6298], 13);
+      }).setView([42.0884, -87.9806], 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',

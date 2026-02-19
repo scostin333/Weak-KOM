@@ -1,14 +1,16 @@
 import { StravaSegment, ScoredSegment, WindData, AthletePREffort, WeaknessBreakdown } from '@/types';
 import { calcBearing, calcTailwind, SegmentWindResult } from './wind';
-import { predictSegmentTime } from './prediction';
+import { predictSegmentTime, gradeSpeedMultiplier } from './prediction';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Domain constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PACE_MIN_S_PER_M = 0.10;
-const PACE_MAX_S_PER_M = 0.30;
-const PACE_WEIGHT      = 0.40;
+// Reference: max expected flat speed at 1 km effort for a strong club cyclist.
+// Riegel exponent models how max sustainable speed drops with distance.
+const PACE_REF_SPEED_KMH = 45;
+const PACE_RIEGEL_EXP    = 0.07;
+const PACE_WEIGHT        = 0.40;
 
 const EFFORT_CAP    = 5_000;
 const EFFORT_WEIGHT = 0.30;
@@ -30,10 +32,18 @@ function normInvert(value: number, lo: number, hi: number): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function paceFactorCorrected(seg: StravaSegment): number {
-  const pace = seg.kom_time / Math.max(seg.distance, 1);
-  return Math.min(1, Math.max(0,
-    (pace - PACE_MIN_S_PER_M) / (PACE_MAX_S_PER_M - PACE_MIN_S_PER_M)
-  ));
+  const d = Math.max(seg.distance, 100);
+
+  // Convert KOM pace to grade-adjusted flat-equivalent speed (km/h).
+  const rawKmh = (d / Math.max(seg.kom_time, 1)) * 3.6;
+  const gapKmh = rawKmh / gradeSpeedMultiplier(seg.average_grade);
+
+  // Riegel model: max expected speed at this distance on flat.
+  const maxKmh = PACE_REF_SPEED_KMH * Math.pow(1000 / d, PACE_RIEGEL_EXP);
+
+  // Score = how far below the max expected the KOM is.
+  // Near 0 → KOM matches expected max (hard to beat). Near 1 → well below max (easy).
+  return Math.min(1, Math.max(0, 1 - gapKmh / maxKmh));
 }
 
 function effortFactor(seg: StravaSegment): number {

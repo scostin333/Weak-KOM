@@ -85,10 +85,16 @@ export default function InfoModal({ onClose }: Props) {
             </p>
             <div className="space-y-4">
               <Factor name="Pace" weight="40%" color="#f97316">
-                Measures how slow the current KOM pace is (KOM time ÷ distance, in s/m).
-                A slow KOM — e.g. a steep climb averaging ~12 km/h — scores 100.
-                A fast KOM averaging ~36 km/h or more scores 0. The harder the record is
-                to beat on pure speed, the lower this score.
+                Compares the KOM against the maximum speed a strong cyclist could
+                realistically sustain on this specific segment. Two adjustments are made:
+                (1) <span className="text-gray-300 font-medium">Grade</span> — the raw speed
+                is converted to a flat-equivalent using a physiological grade model, so a
+                12 km/h KOM on a 10% climb is treated very differently from 12 km/h on flat.
+                (2) <span className="text-gray-300 font-medium">Distance</span> — max
+                sustainable speed decreases with effort length (Riegel power law), so
+                holding 35 km/h for 20 km is much harder than for 500 m.
+                A KOM that matches or exceeds what&apos;s physically expected scores 0;
+                one well below expected scores 100.
               </Factor>
               <Factor name="Efforts" weight="30%" color="#a78bfa">
                 Inverse of total attempt count, capped at 5,000. A segment with very few

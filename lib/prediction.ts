@@ -50,7 +50,7 @@ function kernelWeight(fDist: number): number {
 // Grade-adjusted pace model
 // ─────────────────────────────────────────────────────────────────────────────
 
-function gradeSpeedMultiplier(grade: number): number {
+export function gradeSpeedMultiplier(grade: number): number {
   const g = Math.min(20, Math.max(-5, grade)) / 100;
   return 1 / (1 + 17 * g + 55 * g * g);
 }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Strava KOM Hunter',
+  title: 'Weak KOM',
   description: 'Find your best KOM opportunities using wind data',
 };
 

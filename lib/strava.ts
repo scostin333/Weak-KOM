@@ -68,20 +68,14 @@ export async function fetchSegmentDetail(
   };
 }
 
-export async function fetchSegmentsInBBox(
-  bbox: BBox,
-  accessToken: string
-): Promise<StravaSegment[]> {
+/** Normalise and fetch segments for a single bounding box tile. */
+async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment[]> {
   const bounds = `${bbox.minLat},${bbox.minLng},${bbox.maxLat},${bbox.maxLng}`;
   const url = `${BASE}/segments/explore?bounds=${bounds}&activity_type=riding`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) throw new Error(`Strava API error: ${res.status}`);
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) return [];
   const data = await res.json();
-
-  // Explore returns ExplorerSegment objects with different field names than
-  // DetailedSegment — normalise to our StravaSegment shape here.
+  // Explore returns ExplorerSegment objects — normalise to our StravaSegment shape.
   return (data.segments ?? []).map((s: any): StravaSegment => ({
     id:             s.id,
     name:           s.name,
@@ -97,6 +91,39 @@ export async function fetchSegmentsInBBox(
     starred:        s.starred        ?? false,
     created_at:     s.created_at,
   }));
+}
+
+/**
+ * Query the bbox split into 4 quadrant tiles in parallel (Strava's explore
+ * endpoint is hard-capped at 10 results per request), deduplicate by ID,
+ * and return up to 20 unique segments.
+ */
+export async function fetchSegmentsInBBox(
+  bbox: BBox,
+  accessToken: string,
+): Promise<StravaSegment[]> {
+  const midLat = (bbox.minLat + bbox.maxLat) / 2;
+  const midLng = (bbox.minLng + bbox.maxLng) / 2;
+  const tiles: BBox[] = [
+    { minLat: bbox.minLat, maxLat: midLat, minLng: bbox.minLng, maxLng: midLng },
+    { minLat: bbox.minLat, maxLat: midLat, minLng: midLng,      maxLng: bbox.maxLng },
+    { minLat: midLat,      maxLat: bbox.maxLat, minLng: bbox.minLng, maxLng: midLng },
+    { minLat: midLat,      maxLat: bbox.maxLat, minLng: midLng,      maxLng: bbox.maxLng },
+  ];
+
+  const results = await Promise.all(tiles.map(t => fetchTile(t, accessToken)));
+
+  // Deduplicate by segment ID, preserve first-seen order, cap at 20.
+  const seen = new Set<number>();
+  const unique: StravaSegment[] = [];
+  for (const seg of results.flat()) {
+    if (!seen.has(seg.id)) {
+      seen.add(seg.id);
+      unique.push(seg);
+      if (unique.length === 20) break;
+    }
+  }
+  return unique;
 }
 
 export async function fetchAthleteSegmentEffort(

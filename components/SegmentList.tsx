@@ -129,7 +129,9 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
       {segments.map((seg) => {
         const d        = seg.komWeaknessDetail;
         const sel      = selected === seg.id;
-        const speedMph = (seg.distance / 1609.34) / (seg.kom_time / 3600);
+        const speedMph = seg.kom_time > 0 && seg.distance > 0
+          ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1)
+          : null;
         return (
           <div
             key={seg.id}
@@ -156,7 +158,7 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
             </p>
 
             <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
-              <span className="text-gray-300">KOM {formatTime(seg.kom_time)} · {speedMph.toFixed(1)} mph</span>
+              <span className="text-gray-300">KOM {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}</span>
               {seg.userBestTime && (
                 <span className="text-blue-400">
                   PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta ?? 0)})

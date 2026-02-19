@@ -62,15 +62,18 @@ export async function fetchSegmentDetail(
   const polyline = encodedPolyline && encodedPolyline.length > 0
     ? decodePolyline(encodedPolyline)
     : undefined;
-  // Fetch the leaderboard (top 1 entry) to get when the current KOM was set.
+  // Fetch the leaderboard (top 1 entry) to get when the current KOM was set
+  // and the elapsed_time in seconds (reliable fallback when xoms is unavailable).
   let kom_date: string | undefined;
+  let kom_time_lb: number | undefined;
   const lbRes = await fetch(`${BASE}/segments/${segmentId}/leaderboard?per_page=1`, {
     headers: { Authorization: `Bearer ${accessToken}` },
     next: { revalidate: 3600 },
   });
   if (lbRes.ok) {
     const lb = await lbRes.json();
-    kom_date = lb.entries?.[0]?.start_date ?? undefined;
+    kom_date   = lb.entries?.[0]?.start_date   ?? undefined;
+    kom_time_lb = lb.entries?.[0]?.elapsed_time ?? undefined;
   }
 
   return {
@@ -79,7 +82,7 @@ export async function fetchSegmentDetail(
     elevation_low:  s.elevation_low  ?? 0,
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
-    kom_time:       parseKomTime(s.xoms?.overall ?? s.xoms?.kom),
+    kom_time:       parseKomTime(s.xoms?.overall ?? s.xoms?.kom) || kom_time_lb || 0,
     created_at:     s.created_at,
     kom_date,
     polyline,

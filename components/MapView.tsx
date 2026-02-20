@@ -248,10 +248,14 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
-        const dot = L.circleMarker(path[0], {
-          radius: 5, color: '#fff', weight: 1.5,
-          fillColor: '#22c55e', fillOpacity: 1,
-          renderer: L.svg(),
+        const dot = L.marker(path[0], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div style="width:10px;height:10px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>',
+            iconSize: [10, 10],
+            iconAnchor: [5, 5],
+          }),
+          interactive: false,
         });
         layer.addLayer(dot);
         segDots.current.set(seg.id, dot);

@@ -19,7 +19,7 @@ function lerpColor(a: string, b: string, t: number): string {
   return `#${hr(Math.round(ar + (br - ar) * t))}${hr(Math.round(ag + (bg - ag) * t))}${hr(Math.round(ab + (bb - ab) * t))}`;
 }
 
-function buildGradientLines(L: any, path: any[], baseColor: string, weight: number, opacity: number): any[] {
+function buildGradientLines(L: any, path: any[], baseColor: string, weight: number, opacity: number, renderer: any): any[] {
   const n = path.length;
   if (n < 2) return [];
   const STEPS = Math.min(30, n - 1);
@@ -33,7 +33,7 @@ function buildGradientLines(L: any, path: any[], baseColor: string, weight: numb
     const endIdx   = Math.round((i + 1) * (n - 1) / STEPS);
     const chunk = path.slice(startIdx, endIdx + 1);
     if (chunk.length >= 2) {
-      lines.push(L.polyline(chunk, { color, weight, opacity, interactive: false }));
+      lines.push(L.polyline(chunk, { color, weight, opacity, interactive: false, renderer }));
     }
   }
   return lines;
@@ -264,9 +264,13 @@ export default function MapView({
         ? seg.polyline
         : [seg.start_latlng, seg.end_latlng];
 
+      // One shared SVG renderer per segment keeps gradient + hitbox in the same
+      // SVG pane so they are visible above the tile layer and in correct draw order.
+      const svgRenderer = L.svg();
+
       // Remove old gradient lines and rebuild (covers both new and updated segments)
       for (const gl of segGradients.current.get(seg.id) ?? []) layer.removeLayer(gl);
-      const gLines = buildGradientLines(L, path, color, weight, opacity);
+      const gLines = buildGradientLines(L, path, color, weight, opacity, svgRenderer);
       for (const gl of gLines) layer.addLayer(gl);
       segGradients.current.set(seg.id, gLines);
 
@@ -277,7 +281,6 @@ export default function MapView({
         hitbox.setPopupContent(popup);
       } else {
         // Invisible wide polyline for hover/click interaction, drawn on top of gradient
-        const svgRenderer = L.svg();
         const hitbox = L.polyline(path, {
           color: 'transparent', weight: 20, opacity: 0.001,
           renderer: svgRenderer,

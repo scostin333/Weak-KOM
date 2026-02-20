@@ -254,15 +254,18 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
-        const startPt = path[0];
-        const endPt   = path[path.length - 1];
+        const startPt  = path[0];
+        const endPt    = path[path.length - 1];
+        const svgRenderer = L.svg();
         const startMarker = L.circleMarker(startPt, {
           radius: 5, color: '#fff', weight: 1.5,
           fillColor: '#22c55e', fillOpacity: 1,
+          renderer: svgRenderer,
         });
         const endMarker = L.circleMarker(endPt, {
           radius: 5, color: '#fff', weight: 1.5,
           fillColor: '#111111', fillOpacity: 1,
+          renderer: svgRenderer,
         });
         layer.addLayer(startMarker);
         layer.addLayer(endMarker);

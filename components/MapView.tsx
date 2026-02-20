@@ -10,35 +10,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 
-function lerpColor(a: string, b: string, t: number): string {
-  const hr = (n: number) => n.toString(16).padStart(2, '0');
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ar = (pa >> 16) & 0xff, ag = (pa >> 8) & 0xff, ab = pa & 0xff;
-  const br = (pb >> 16) & 0xff, bg = (pb >> 8) & 0xff, bb = pb & 0xff;
-  return `#${hr(Math.round(ar + (br - ar) * t))}${hr(Math.round(ag + (bg - ag) * t))}${hr(Math.round(ab + (bb - ab) * t))}`;
-}
-
-function buildGradientLines(L: any, path: any[], baseColor: string, weight: number, opacity: number, renderer: any): any[] {
-  const n = path.length;
-  if (n < 2) return [];
-  const STEPS = Math.min(30, n - 1);
-  const light = lerpColor('#ffffff', baseColor, 0.3);
-  const dark  = lerpColor(baseColor, '#111111', 0.5);
-  const lines: any[] = [];
-  for (let i = 0; i < STEPS; i++) {
-    const t = STEPS === 1 ? 0.5 : i / (STEPS - 1);
-    const color = lerpColor(light, dark, t);
-    const startIdx = Math.round(i * (n - 1) / STEPS);
-    const endIdx   = Math.round((i + 1) * (n - 1) / STEPS);
-    const chunk = path.slice(startIdx, endIdx + 1);
-    if (chunk.length >= 2) {
-      lines.push(L.polyline(chunk, { color, weight, opacity, interactive: false, renderer }));
-    }
-  }
-  return lines;
-}
-
 interface Props {
   segments: ScoredSegment[];
   selected: number | null;
@@ -99,8 +70,8 @@ export default function MapView({
   const mapRef        = useRef<any>(null);
   const drawLayer     = useRef<any>(null);
   const segLayer      = useRef<any>(null);
-  const segLines      = useRef<Map<number, any>>(new Map());     // hitbox polyline per segment
-  const segGradients  = useRef<Map<number, any[]>>(new Map());  // gradient mini-polylines per segment
+  const segLines      = useRef<Map<number, any>>(new Map());
+  const segDots       = useRef<Map<number, any>>(new Map());  // green start dot per segment
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -195,7 +166,7 @@ export default function MapView({
         drawLayer.current = null;
         segLayer.current  = null;
         segLines.current.clear();
-        segGradients.current.clear();
+        segDots.current.clear();
       }
     };
   }, []);
@@ -214,12 +185,12 @@ export default function MapView({
 
     const incoming = new Map(segments.map(s => [s.id, s]));
 
-    for (const [id, hitbox] of Array.from(existing)) {
+    for (const [id, line] of Array.from(existing)) {
       if (!incoming.has(id)) {
-        layer.removeLayer(hitbox);
+        layer.removeLayer(line);
         existing.delete(id);
-        for (const gl of segGradients.current.get(id) ?? []) layer.removeLayer(gl);
-        segGradients.current.delete(id);
+        const dot = segDots.current.get(id);
+        if (dot) { layer.removeLayer(dot); segDots.current.delete(id); }
       }
     }
 
@@ -260,36 +231,30 @@ export default function MapView({
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         `</div>`;
 
-      const path = seg.polyline && seg.polyline.length > 1
-        ? seg.polyline
-        : [seg.start_latlng, seg.end_latlng];
-
-      // One shared SVG renderer per segment keeps gradient + hitbox in the same
-      // SVG pane so they are visible above the tile layer and in correct draw order.
-      const svgRenderer = L.svg();
-
-      // Remove old gradient lines and rebuild (covers both new and updated segments)
-      for (const gl of segGradients.current.get(seg.id) ?? []) layer.removeLayer(gl);
-      const gLines = buildGradientLines(L, path, color, weight, opacity, svgRenderer);
-      for (const gl of gLines) layer.addLayer(gl);
-      segGradients.current.set(seg.id, gLines);
-
       if (existing.has(seg.id)) {
-        // Update the invisible hitbox tooltip/popup
-        const hitbox = existing.get(seg.id)!;
-        hitbox.setTooltipContent(tooltip);
-        hitbox.setPopupContent(popup);
+        const line = existing.get(seg.id)!;
+        line.setStyle({ color, weight, opacity });
+        line.setTooltipContent(tooltip);
+        line.setPopupContent(popup);
       } else {
-        // Invisible wide polyline for hover/click interaction, drawn on top of gradient
-        const hitbox = L.polyline(path, {
-          color: 'transparent', weight: 20, opacity: 0.001,
-          renderer: svgRenderer,
+        const path = seg.polyline && seg.polyline.length > 1
+          ? seg.polyline
+          : [seg.start_latlng, seg.end_latlng];
+
+        const line = L.polyline(path, { color, weight, opacity });
+        line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
+        line.bindPopup(popup, { maxWidth: 260 });
+        line.on('click', () => onSelectRef.current(seg.id));
+        layer.addLayer(line);
+        existing.set(seg.id, line);
+
+        const dot = L.circleMarker(path[0], {
+          radius: 5, color: '#fff', weight: 1.5,
+          fillColor: '#22c55e', fillOpacity: 1,
+          renderer: L.svg(),
         });
-        hitbox.bindTooltip(tooltip, { sticky: true, direction: 'top' });
-        hitbox.bindPopup(popup, { maxWidth: 260 });
-        hitbox.on('click', () => onSelectRef.current(seg.id));
-        layer.addLayer(hitbox);
-        existing.set(seg.id, hitbox);
+        layer.addLayer(dot);
+        segDots.current.set(seg.id, dot);
       }
     }
   }, [segments, selected]);

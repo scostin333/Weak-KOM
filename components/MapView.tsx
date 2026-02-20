@@ -67,10 +67,11 @@ export default function MapView({
   useEffect(() => { onBBoxDrawnRef.current = onBBoxDrawn; }, [onBBoxDrawn]);
   useEffect(() => { onSelectRef.current    = onSelect;    }, [onSelect]);
 
-  const mapRef      = useRef<any>(null);
-  const drawLayer   = useRef<any>(null);
-  const segLayer    = useRef<any>(null);
-  const segLines    = useRef<Map<number, any>>(new Map());
+  const mapRef       = useRef<any>(null);
+  const drawLayer    = useRef<any>(null);
+  const segLayer     = useRef<any>(null);
+  const segLines     = useRef<Map<number, any>>(new Map());
+  const segMarkers   = useRef<Map<number, { start: any; end: any }>>(new Map());
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -165,6 +166,7 @@ export default function MapView({
         drawLayer.current = null;
         segLayer.current  = null;
         segLines.current.clear();
+        segMarkers.current.clear();
       }
     };
   }, []);
@@ -187,6 +189,12 @@ export default function MapView({
       if (!incoming.has(id)) {
         layer.removeLayer(line);
         existing.delete(id);
+        const m = segMarkers.current.get(id);
+        if (m) {
+          layer.removeLayer(m.start);
+          layer.removeLayer(m.end);
+          segMarkers.current.delete(id);
+        }
       }
     }
 
@@ -245,6 +253,20 @@ export default function MapView({
         line.on('click', () => onSelectRef.current(seg.id));
         layer.addLayer(line);
         existing.set(seg.id, line);
+
+        const startPt = path[0];
+        const endPt   = path[path.length - 1];
+        const startMarker = L.circleMarker(startPt, {
+          radius: 5, color: '#fff', weight: 1.5,
+          fillColor: '#22c55e', fillOpacity: 1,
+        });
+        const endMarker = L.circleMarker(endPt, {
+          radius: 5, color: '#fff', weight: 1.5,
+          fillColor: '#111111', fillOpacity: 1,
+        });
+        layer.addLayer(startMarker);
+        layer.addLayer(endMarker);
+        segMarkers.current.set(seg.id, { start: startMarker, end: endMarker });
       }
     }
   }, [segments, selected]);

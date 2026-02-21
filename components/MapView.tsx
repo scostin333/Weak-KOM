@@ -15,11 +15,12 @@ import { ScoredSegment, BBox } from '@/types';
  * rotated so it points in `bearing` degrees (clockwise from north).
  */
 function buildArrowHtml(color: string, bearing: number): string {
+  // TEST: large red arrow so we can confirm rendering works at all
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" ` +
-    `viewBox="-11 -11 22 22" style="overflow:visible;display:block">` +
-    `<polyline points="-8,8 0,-9 8,8" fill="none" stroke="${color}" ` +
-    `stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" ` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" ` +
+    `viewBox="-40 -40 80 80" style="overflow:visible;display:block;border:2px solid red;background:rgba(255,0,0,0.15)">` +
+    `<polyline points="-30,30 0,-35 30,30" fill="none" stroke="red" ` +
+    `stroke-width="6" stroke-linejoin="round" stroke-linecap="round" ` +
     `transform="rotate(${bearing})"/>` +
     `</svg>`
   );
@@ -44,8 +45,8 @@ function makeArrowMarker(L: any, path: any[], color: string): any | null {
   const icon = L.divIcon({
     html:       buildArrowHtml(color, bearing),
     className:  '',        // removes Leaflet's default white-box divIcon style
-    iconSize:   [22, 22],
-    iconAnchor: [11, 11],  // centred on the segment start point
+    iconSize:   [80, 80],
+    iconAnchor: [40, 40],  // centred on the segment start point
   });
 
   const marker = L.marker([lat0, lng0], { icon, interactive: false, zIndexOffset: 500 });
@@ -292,8 +293,8 @@ export default function MapView({
           existingArrow.setIcon(L.divIcon({
             html:       buildArrowHtml(arrowColor, (existingArrow as any)._arrowBearing),
             className:  '',
-            iconSize:   [22, 22],
-            iconAnchor: [11, 11],
+            iconSize:   [80, 80],
+            iconAnchor: [40, 40],
           }));
         }
       } else {

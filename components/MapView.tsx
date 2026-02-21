@@ -212,19 +212,13 @@ export default function MapView({
     const L: any = (window as any).L;
     if (!L) return;
 
-    const layer    = segLayer.current;
-    const existing = segLines.current;
+    const layer = segLayer.current;
 
-    const incoming = new Map(segments.map(s => [s.id, s]));
-
-    for (const [id, line] of Array.from(existing)) {
-      if (!incoming.has(id)) {
-        layer.removeLayer(line);
-        existing.delete(id);
-        const arrow = segArrows.current.get(id);
-        if (arrow) { layer.removeLayer(arrow); segArrows.current.delete(id); }
-      }
-    }
+    // Always remove every existing line and rebuild from scratch.
+    // This guarantees the arrowhead is embedded in the line on every render,
+    // regardless of React StrictMode double-invocation or prior cache state.
+    segLines.current.forEach(line => layer.removeLayer(line));
+    segLines.current.clear();
 
     for (const seg of segments) {
       const isSelected = selected === seg.id;
@@ -267,26 +261,16 @@ export default function MapView({
         ? seg.polyline
         : [seg.start_latlng, seg.end_latlng];
 
-      if (existing.has(seg.id)) {
-        const line = existing.get(seg.id)!;
-        line.setStyle({ color, weight, opacity });
-        line.setTooltipContent(tooltip);
-        line.setPopupContent(popup);
-      } else {
-        // Embed the V-arrowhead into the segment path so it renders on the
-        // exact same canvas layer as the line — guaranteed visibility.
-        // fullPath = [w1, tip, w2, tip, seg_pt1, seg_pt2, ...]
-        // The w2→tip backtrack closes the right wing before the route starts.
-        const arrowPts = makeArrowhead(path);
-        const fullPath = arrowPts ? [...arrowPts, ...path] : path;
+      // Embed V-arrowhead: fullPath = [w1, tip, w2, tip, seg_pt1, ...]
+      const arrowPts = makeArrowhead(path);
+      const fullPath = arrowPts ? [...arrowPts, ...path] : path;
 
-        const line = L.polyline(fullPath, { color, weight, opacity });
-        line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
-        line.bindPopup(popup, { maxWidth: 260 });
-        line.on('click', () => onSelectRef.current(seg.id));
-        layer.addLayer(line);
-        existing.set(seg.id, line);
-      }
+      const line = L.polyline(fullPath, { color, weight, opacity });
+      line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
+      line.bindPopup(popup, { maxWidth: 260 });
+      line.on('click', () => onSelectRef.current(seg.id));
+      layer.addLayer(line);
+      segLines.current.set(seg.id, line);
     }
   }, [segments, selected]);
 

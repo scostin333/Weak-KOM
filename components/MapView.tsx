@@ -267,32 +267,25 @@ export default function MapView({
         ? seg.polyline
         : [seg.start_latlng, seg.end_latlng];
 
-      // Arrow color: green when unselected, purple when selected
-      const arrowColor = isSelected ? '#a855f7' : '#22c55e';
-
       if (existing.has(seg.id)) {
         const line = existing.get(seg.id)!;
         line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
-        segArrows.current.get(seg.id)?.setStyle({ color: arrowColor });
       } else {
-        const line = L.polyline(path, { color, weight, opacity });
+        // Embed the V-arrowhead into the segment path so it renders on the
+        // exact same canvas layer as the line — guaranteed visibility.
+        // fullPath = [w1, tip, w2, tip, seg_pt1, seg_pt2, ...]
+        // The w2→tip backtrack closes the right wing before the route starts.
+        const arrowPts = makeArrowhead(path);
+        const fullPath = arrowPts ? [...arrowPts, ...path] : path;
+
+        const line = L.polyline(fullPath, { color, weight, opacity });
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
         line.bindPopup(popup, { maxWidth: 260 });
         line.on('click', () => onSelectRef.current(seg.id));
         layer.addLayer(line);
         existing.set(seg.id, line);
-
-        const arrowPts = makeArrowhead(path);
-        console.log('[arrow] seg', seg.id, 'pts', arrowPts);
-        if (arrowPts) {
-          const arrow = L.polyline(arrowPts, {
-            color: arrowColor, weight: 4, opacity: 1, interactive: false,
-          });
-          layer.addLayer(arrow);
-          segArrows.current.set(seg.id, arrow);
-        }
       }
     }
   }, [segments, selected]);

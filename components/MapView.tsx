@@ -28,7 +28,7 @@ function makeArrowhead(path: any[]): [number, number][] | null {
   if (len < 1e-10) return null;
 
   const fx = dlng / len, fy = dlat / len;   // forward unit vector (east, north)
-  const SIZE = 0.002;                        // ~220 m — visible at zoom 13+
+  const SIZE = 0.005;                        // ~550 m — large test size
   const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
 
   const w1: [number, number] = [
@@ -275,9 +275,9 @@ export default function MapView({
   }, [segments, selected]);
 
   const hintContent = {
-    draw:    '✏️  Click the rectangle tool (top-left) and drag to define a search area',
+    draw:    '>>> CODE_V9 <<< Click the rectangle tool to search',
     loading: '⏳  Fetching segments…',
-    done:    `✅  ${segments.length} segment${segments.length !== 1 ? 's' : ''} found — draw a new box to refresh`,
+    done:    `>>> CODE_V9 <<< ${segments.length} segments found`,
   }[hint];
 
   return (

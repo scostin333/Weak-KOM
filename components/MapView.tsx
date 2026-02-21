@@ -11,24 +11,47 @@ import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 
 /**
- * Compute three points forming a "V" arrowhead at path[0] pointing toward path[look].
- * Returns [leftWing, tip, rightWing] in [lat,lng] form, or null if path is too short.
+ * Build the SVG HTML string for a V-shaped arrowhead of the given color,
+ * rotated so it points in `bearing` degrees (clockwise from north).
  */
-function makeArrowhead(path: any[]): [number, number][] | null {
+function buildArrowHtml(color: string, bearing: number): string {
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" ` +
+    `viewBox="-11 -11 22 22" style="overflow:visible;display:block">` +
+    `<polyline points="-8,8 0,-9 8,8" fill="none" stroke="${color}" ` +
+    `stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" ` +
+    `transform="rotate(${bearing})"/>` +
+    `</svg>`
+  );
+}
+
+/**
+ * Create a Leaflet divIcon marker at the start of `path` with a V-shaped SVG
+ * arrowhead pointing in the direction of travel.  Returns null if path is too
+ * short or the segment has no measurable direction.
+ */
+function makeArrowMarker(L: any, path: any[], color: string): any | null {
   if (path.length < 2) return null;
   const look = Math.min(3, path.length - 1);
   const lat0 = path[0][0], lng0 = path[0][1];
   const lat1 = path[look][0], lng1 = path[look][1];
   const dlat = lat1 - lat0, dlng = lng1 - lng0;
-  const len = Math.sqrt(dlat * dlat + dlng * dlng);
-  if (len < 1e-10) return null;
-  // Forward unit vector in (east=lng, north=lat) space
-  const fx = dlng / len, fy = dlat / len;
-  const SIZE = 0.0004; // ~44 m — large enough to be clearly visible
-  const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
-  const w1: [number, number] = [lat0 - SIZE * (fx * sa + fy * ca), lng0 - SIZE * (fx * ca - fy * sa)];
-  const w2: [number, number] = [lat0 + SIZE * (fx * sa - fy * ca), lng0 - SIZE * (fx * ca + fy * sa)];
-  return [w1, [lat0, lng0], w2];
+  if (Math.abs(dlat) < 1e-10 && Math.abs(dlng) < 1e-10) return null;
+
+  // True bearing: degrees clockwise from north, accounting for lng compression
+  const bearing = Math.atan2(dlng * Math.cos(lat0 * Math.PI / 180), dlat) * 180 / Math.PI;
+
+  const icon = L.divIcon({
+    html:       buildArrowHtml(color, bearing),
+    className:  '',        // removes Leaflet's default white-box divIcon style
+    iconSize:   [22, 22],
+    iconAnchor: [11, 11],  // centred on the segment start point
+  });
+
+  const marker = L.marker([lat0, lng0], { icon, interactive: false, zIndexOffset: 500 });
+  // Store bearing so the icon can be rebuilt cheaply when color changes
+  (marker as any)._arrowBearing = bearing;
+  return marker;
 }
 
 interface Props {
@@ -264,7 +287,15 @@ export default function MapView({
         line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
-        segArrows.current.get(seg.id)?.setStyle({ color: arrowColor });
+        const existingArrow = segArrows.current.get(seg.id);
+        if (existingArrow) {
+          existingArrow.setIcon(L.divIcon({
+            html:       buildArrowHtml(arrowColor, (existingArrow as any)._arrowBearing),
+            className:  '',
+            iconSize:   [22, 22],
+            iconAnchor: [11, 11],
+          }));
+        }
       } else {
         const line = L.polyline(path, { color, weight, opacity });
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
@@ -273,9 +304,8 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
-        const arrowPts = makeArrowhead(path);
-        if (arrowPts) {
-          const arrow = L.polyline(arrowPts, { color: arrowColor, weight: 3, opacity: 1, interactive: false });
+        const arrow = makeArrowMarker(L, path, arrowColor);
+        if (arrow) {
           layer.addLayer(arrow);
           segArrows.current.set(seg.id, arrow);
         }

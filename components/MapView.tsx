@@ -10,6 +10,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 
+/**
+ * Compute three points forming a "V" arrowhead at path[0] pointing toward path[look].
+ * Returns [leftWing, tip, rightWing] in [lat,lng] form, or null if path is too short.
+ */
+function makeArrowhead(path: any[]): [number, number][] | null {
+  if (path.length < 2) return null;
+  const look = Math.min(3, path.length - 1);
+  const lat0 = path[0][0], lng0 = path[0][1];
+  const lat1 = path[look][0], lng1 = path[look][1];
+  const dlat = lat1 - lat0, dlng = lng1 - lng0;
+  const len = Math.sqrt(dlat * dlat + dlng * dlng);
+  if (len < 1e-10) return null;
+  // Forward unit vector in (east=lng, north=lat) space
+  const fx = dlng / len, fy = dlat / len;
+  const SIZE = 0.0004; // ~44 m — large enough to be clearly visible
+  const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
+  const w1: [number, number] = [lat0 - SIZE * (fx * sa + fy * ca), lng0 - SIZE * (fx * ca - fy * sa)];
+  const w2: [number, number] = [lat0 + SIZE * (fx * sa - fy * ca), lng0 - SIZE * (fx * ca + fy * sa)];
+  return [w1, [lat0, lng0], w2];
+}
+
 interface Props {
   segments: ScoredSegment[];
   selected: number | null;
@@ -71,7 +92,7 @@ export default function MapView({
   const drawLayer     = useRef<any>(null);
   const segLayer      = useRef<any>(null);
   const segLines      = useRef<Map<number, any>>(new Map());
-  const segDots       = useRef<Map<number, any>>(new Map());  // green start dot per segment
+  const segArrows     = useRef<Map<number, any>>(new Map());  // arrowhead polyline per segment
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -166,7 +187,7 @@ export default function MapView({
         drawLayer.current = null;
         segLayer.current  = null;
         segLines.current.clear();
-        segDots.current.clear();
+        segArrows.current.clear();
       }
     };
   }, []);
@@ -189,8 +210,8 @@ export default function MapView({
       if (!incoming.has(id)) {
         layer.removeLayer(line);
         existing.delete(id);
-        const dot = segDots.current.get(id);
-        if (dot) { layer.removeLayer(dot); segDots.current.delete(id); }
+        const arrow = segArrows.current.get(id);
+        if (arrow) { layer.removeLayer(arrow); segArrows.current.delete(id); }
       }
     }
 
@@ -231,16 +252,20 @@ export default function MapView({
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         `</div>`;
 
+      const path = seg.polyline && seg.polyline.length > 1
+        ? seg.polyline
+        : [seg.start_latlng, seg.end_latlng];
+
+      // Arrow color: green when unselected, purple when selected
+      const arrowColor = isSelected ? '#a855f7' : '#22c55e';
+
       if (existing.has(seg.id)) {
         const line = existing.get(seg.id)!;
         line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
+        segArrows.current.get(seg.id)?.setStyle({ color: arrowColor });
       } else {
-        const path = seg.polyline && seg.polyline.length > 1
-          ? seg.polyline
-          : [seg.start_latlng, seg.end_latlng];
-
         const line = L.polyline(path, { color, weight, opacity });
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
         line.bindPopup(popup, { maxWidth: 260 });
@@ -248,17 +273,12 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
-        const dot = L.marker(path[0], {
-          icon: L.divIcon({
-            className: '',
-            html: '<div style="width:10px;height:10px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>',
-            iconSize: [10, 10],
-            iconAnchor: [5, 5],
-          }),
-          interactive: false,
-        });
-        layer.addLayer(dot);
-        segDots.current.set(seg.id, dot);
+        const arrowPts = makeArrowhead(path);
+        if (arrowPts) {
+          const arrow = L.polyline(arrowPts, { color: arrowColor, weight: 3, opacity: 1, interactive: false });
+          layer.addLayer(arrow);
+          segArrows.current.set(seg.id, arrow);
+        }
       }
     }
   }, [segments, selected]);

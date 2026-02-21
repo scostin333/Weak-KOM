@@ -49,8 +49,8 @@ function makeArrowMarker(L: any, path: any[], color: string): any | null {
     iconAnchor: [40, 40],  // centred on the segment start point
   });
 
+  console.log('[makeArrowMarker] lat0', lat0, 'lng0', lng0, 'bearing', bearing.toFixed(1));
   const marker = L.marker([lat0, lng0], { icon, interactive: false, zIndexOffset: 500 });
-  // Store bearing so the icon can be rebuilt cheaply when color changes
   (marker as any)._arrowBearing = bearing;
   return marker;
 }
@@ -306,8 +306,15 @@ export default function MapView({
         existing.set(seg.id, line);
 
         const arrow = makeArrowMarker(L, path, arrowColor);
+        console.log('[arrow] seg', seg.id, 'arrow=', arrow, 'path[0]=', path[0]);
         if (arrow) {
-          layer.addLayer(arrow);
+          // Add directly to the map (bypassing FeatureGroup) to rule out FeatureGroup issues
+          try {
+            arrow.addTo(mapRef.current);
+            console.log('[arrow] addTo map succeeded for seg', seg.id);
+          } catch (e) {
+            console.error('[arrow] addTo failed:', e);
+          }
           segArrows.current.set(seg.id, arrow);
         }
       }

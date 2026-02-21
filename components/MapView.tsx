@@ -43,8 +43,8 @@ function makeArrowMarker(L: any, path: any[], color: string): any | null {
   const bearing = Math.atan2(dlng * Math.cos(lat0 * Math.PI / 180), dlat) * 180 / Math.PI;
 
   const icon = L.divIcon({
-    html:       buildArrowHtml(color, bearing),
-    className:  '',        // removes Leaflet's default white-box divIcon style
+    html:       `<div style="width:80px;height:80px;background:rgba(255,0,0,0.4);border:3px solid red;box-sizing:border-box">` + buildArrowHtml(color, bearing) + `</div>`,
+    className:  'arrow-marker',
     iconSize:   [80, 80],
     iconAnchor: [40, 40],  // centred on the segment start point
   });
@@ -305,16 +305,25 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
+        const lat0 = (path[0] as any)[0];
+        const lng0 = (path[0] as any)[1];
+        console.log('[arrow-test] seg', seg.id, 'lat0', lat0, 'lng0', lng0, 'path[0]', path[0]);
+
+        // Test A: circleMarker (canvas renderer, same as polylines — should be visible)
+        const testCircle = L.circleMarker([lat0, lng0], {
+          radius: 20, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1, weight: 5,
+        });
+        testCircle.addTo(mapRef.current);
+
+        // Test B: permanent tooltip (HTML, same system as hover tooltips — should be visible)
+        const testTip = L.tooltip({ permanent: true, direction: 'top', opacity: 1 })
+          .setLatLng([lat0, lng0]).setContent('▲');
+        testTip.addTo(mapRef.current);
+
+        // Test C: divIcon marker with explicit red wrapper div
         const arrow = makeArrowMarker(L, path, arrowColor);
-        console.log('[arrow] seg', seg.id, 'arrow=', arrow, 'path[0]=', path[0]);
         if (arrow) {
-          // Add directly to the map (bypassing FeatureGroup) to rule out FeatureGroup issues
-          try {
-            arrow.addTo(mapRef.current);
-            console.log('[arrow] addTo map succeeded for seg', seg.id);
-          } catch (e) {
-            console.error('[arrow] addTo failed:', e);
-          }
+          arrow.addTo(mapRef.current);
           segArrows.current.set(seg.id, arrow);
         }
       }

@@ -11,48 +11,35 @@ import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 
 /**
- * Build the SVG HTML string for a V-shaped arrowhead of the given color,
- * rotated so it points in `bearing` degrees (clockwise from north).
+ * Compute three points forming a "V" arrowhead at path[0] pointing toward
+ * path[look].  Returns [leftWing, tip, rightWing] in [lat,lng] form, or null
+ * if the path is too short / has no measurable direction.
+ *
+ * SIZE is in decimal degrees.  0.002 ≈ 220 m ≈ 15 px at zoom 13, which is
+ * clearly visible as a V at every typical viewing zoom.
  */
-function buildArrowHtml(color: string, bearing: number): string {
-  // TEST: large red arrow so we can confirm rendering works at all
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" ` +
-    `viewBox="-40 -40 80 80" style="overflow:visible;display:block;border:2px solid red;background:rgba(255,0,0,0.15)">` +
-    `<polyline points="-30,30 0,-35 30,30" fill="none" stroke="red" ` +
-    `stroke-width="6" stroke-linejoin="round" stroke-linecap="round" ` +
-    `transform="rotate(${bearing})"/>` +
-    `</svg>`
-  );
-}
-
-/**
- * Create a Leaflet divIcon marker at the start of `path` with a V-shaped SVG
- * arrowhead pointing in the direction of travel.  Returns null if path is too
- * short or the segment has no measurable direction.
- */
-function makeArrowMarker(L: any, path: any[], color: string): any | null {
+function makeArrowhead(path: any[]): [number, number][] | null {
   if (path.length < 2) return null;
   const look = Math.min(3, path.length - 1);
   const lat0 = path[0][0], lng0 = path[0][1];
   const lat1 = path[look][0], lng1 = path[look][1];
   const dlat = lat1 - lat0, dlng = lng1 - lng0;
-  if (Math.abs(dlat) < 1e-10 && Math.abs(dlng) < 1e-10) return null;
+  const len = Math.sqrt(dlat * dlat + dlng * dlng);
+  if (len < 1e-10) return null;
 
-  // True bearing: degrees clockwise from north, accounting for lng compression
-  const bearing = Math.atan2(dlng * Math.cos(lat0 * Math.PI / 180), dlat) * 180 / Math.PI;
+  const fx = dlng / len, fy = dlat / len;   // forward unit vector (east, north)
+  const SIZE = 0.002;                        // ~220 m — visible at zoom 13+
+  const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
 
-  const icon = L.divIcon({
-    html:       `<div style="width:80px;height:80px;background:rgba(255,0,0,0.4);border:3px solid red;box-sizing:border-box">` + buildArrowHtml(color, bearing) + `</div>`,
-    className:  'arrow-marker',
-    iconSize:   [80, 80],
-    iconAnchor: [40, 40],  // centred on the segment start point
-  });
-
-  console.log('[makeArrowMarker] lat0', lat0, 'lng0', lng0, 'bearing', bearing.toFixed(1));
-  const marker = L.marker([lat0, lng0], { icon, interactive: false, zIndexOffset: 500 });
-  (marker as any)._arrowBearing = bearing;
-  return marker;
+  const w1: [number, number] = [
+    lat0 - SIZE * (fx * sa + fy * ca),
+    lng0 - SIZE * (fx * ca - fy * sa),
+  ];
+  const w2: [number, number] = [
+    lat0 + SIZE * (fx * sa - fy * ca),
+    lng0 - SIZE * (fx * ca + fy * sa),
+  ];
+  return [w1, [lat0, lng0], w2];
 }
 
 interface Props {
@@ -288,15 +275,7 @@ export default function MapView({
         line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
-        const existingArrow = segArrows.current.get(seg.id);
-        if (existingArrow) {
-          existingArrow.setIcon(L.divIcon({
-            html:       buildArrowHtml(arrowColor, (existingArrow as any)._arrowBearing),
-            className:  '',
-            iconSize:   [80, 80],
-            iconAnchor: [40, 40],
-          }));
-        }
+        segArrows.current.get(seg.id)?.setStyle({ color: arrowColor });
       } else {
         const line = L.polyline(path, { color, weight, opacity });
         line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
@@ -305,25 +284,13 @@ export default function MapView({
         layer.addLayer(line);
         existing.set(seg.id, line);
 
-        const lat0 = (path[0] as any)[0];
-        const lng0 = (path[0] as any)[1];
-        console.log('[arrow-test] seg', seg.id, 'lat0', lat0, 'lng0', lng0, 'path[0]', path[0]);
-
-        // Test A: circleMarker (canvas renderer, same as polylines — should be visible)
-        const testCircle = L.circleMarker([lat0, lng0], {
-          radius: 20, color: '#ff0000', fillColor: '#ff0000', fillOpacity: 1, weight: 5,
-        });
-        testCircle.addTo(mapRef.current);
-
-        // Test B: permanent tooltip (HTML, same system as hover tooltips — should be visible)
-        const testTip = L.tooltip({ permanent: true, direction: 'top', opacity: 1 })
-          .setLatLng([lat0, lng0]).setContent('▲');
-        testTip.addTo(mapRef.current);
-
-        // Test C: divIcon marker with explicit red wrapper div
-        const arrow = makeArrowMarker(L, path, arrowColor);
-        if (arrow) {
-          arrow.addTo(mapRef.current);
+        const arrowPts = makeArrowhead(path);
+        console.log('[arrow] seg', seg.id, 'pts', arrowPts);
+        if (arrowPts) {
+          const arrow = L.polyline(arrowPts, {
+            color: arrowColor, weight: 4, opacity: 1, interactive: false,
+          });
+          layer.addLayer(arrow);
           segArrows.current.set(seg.id, arrow);
         }
       }

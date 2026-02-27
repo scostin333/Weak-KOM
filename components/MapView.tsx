@@ -33,9 +33,9 @@ function getMidpoint(seg: ScoredSegment): [number, number] {
 function createArrowIcon(L: any, bearing: number, color: string) {
   return L.divIcon({
     className: '',
-    html: `<div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:12px solid ${color};transform:rotate(${bearing}deg);transform-origin:center center;opacity:0.9"></div>`,
-    iconSize: [10, 12],
-    iconAnchor: [5, 6],
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="transform:rotate(${bearing}deg);display:block;filter:drop-shadow(0 0 1px rgba(0,0,0,0.5))"><polygon points="8,1 14,15 8,11 2,15" fill="${color}"/></svg>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
 }
 

@@ -21,13 +21,16 @@ interface Props {
 const LEAFLET_VERSION = '1.9.4';
 const DRAW_VERSION    = '1.0.4';
 
-function getMidpoint(seg: ScoredSegment): [number, number] {
+function getArrowPosition(seg: ScoredSegment): [number, number] {
+  const [lat1, lng1] = seg.start_latlng;
+  const [lat2, lng2] = seg.end_latlng;
+  const dlat = (lat2 - lat1) * 111000;
+  const dlng = (lng2 - lng1) * 111000 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+  const endDist = Math.sqrt(dlat * dlat + dlng * dlng);
+  if (endDist < 50) return seg.start_latlng; // circular — use start/finish point
   if (seg.polyline && seg.polyline.length > 1)
     return seg.polyline[Math.floor(seg.polyline.length / 2)];
-  return [
-    (seg.start_latlng[0] + seg.end_latlng[0]) / 2,
-    (seg.start_latlng[1] + seg.end_latlng[1]) / 2,
-  ];
+  return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
 }
 
 function createArrowIcon(L: any, bearing: number, color: string) {
@@ -256,7 +259,7 @@ export default function MapView({
         line.setPopupContent(popup);
         const arrow = arrowMarkers.current.get(seg.id);
         if (arrow) {
-          arrow.setLatLng(getMidpoint(seg));
+          arrow.setLatLng(getArrowPosition(seg));
           arrow.setIcon(createArrowIcon(L, seg.bearing, color));
         }
       } else {
@@ -272,7 +275,7 @@ export default function MapView({
         line.on('click', () => onSelectRef.current(seg.id));
         layer.addLayer(line);
         existing.set(seg.id, line);
-        const arrow = L.marker(getMidpoint(seg), {
+        const arrow = L.marker(getArrowPosition(seg), {
           icon: createArrowIcon(L, seg.bearing, color),
           interactive: false,
           zIndexOffset: 500,

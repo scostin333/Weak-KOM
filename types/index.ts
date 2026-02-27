@@ -20,6 +20,7 @@ export interface StravaSegment {
   starred: boolean;
   created_at?: string;
   polyline?: [number, number][];  // decoded GPS path (lat/lng pairs)
+  surface?: string;               // e.g. "Paved", "Unpaved", "Gravel"
 }
 
 export interface WindData {

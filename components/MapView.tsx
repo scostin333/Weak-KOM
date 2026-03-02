@@ -53,6 +53,27 @@ interface Props {
 const LEAFLET_VERSION = '1.9.4';
 const DRAW_VERSION    = '1.0.4';
 
+function getArrowPosition(seg: ScoredSegment): [number, number] {
+  const [lat1, lng1] = seg.start_latlng;
+  const [lat2, lng2] = seg.end_latlng;
+  const dlat = (lat2 - lat1) * 111000;
+  const dlng = (lng2 - lng1) * 111000 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+  const endDist = Math.sqrt(dlat * dlat + dlng * dlng);
+  if (endDist < 50) return seg.start_latlng; // circular — use start/finish point
+  if (seg.polyline && seg.polyline.length > 1)
+    return seg.polyline[Math.floor(seg.polyline.length / 2)];
+  return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
+}
+
+function createArrowIcon(L: any, bearing: number, color: string) {
+  return L.divIcon({
+    className: '',
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" style="transform:rotate(${bearing}deg);display:block;filter:drop-shadow(0 0 1px rgba(0,0,0,0.5))"><polygon points="8,1 14,15 8,11 2,15" fill="${color}"/></svg>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+}
+
 function ensureAssets(): Promise<void> {
   if (typeof window !== 'undefined' && (window as any).L?.Draw) {
     return Promise.resolve();
@@ -99,11 +120,11 @@ export default function MapView({
   useEffect(() => { onBBoxDrawnRef.current = onBBoxDrawn; }, [onBBoxDrawn]);
   useEffect(() => { onSelectRef.current    = onSelect;    }, [onSelect]);
 
-  const mapRef        = useRef<any>(null);
-  const drawLayer     = useRef<any>(null);
-  const segLayer      = useRef<any>(null);
-  const segLines      = useRef<Map<number, any>>(new Map());
-  const segArrows     = useRef<Map<number, any>>(new Map());  // arrowhead polyline per segment
+  const mapRef      = useRef<any>(null);
+  const drawLayer   = useRef<any>(null);
+  const segLayer    = useRef<any>(null);
+  const segLines    = useRef<Map<number, any>>(new Map());
+  const arrowMarkers = useRef<Map<number, any>>(new Map());
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -198,7 +219,7 @@ export default function MapView({
         drawLayer.current = null;
         segLayer.current  = null;
         segLines.current.clear();
-        segArrows.current.clear();
+        arrowMarkers.current.clear();
       }
     };
   }, []);
@@ -214,11 +235,16 @@ export default function MapView({
 
     const layer = segLayer.current;
 
-    // Always remove every existing line and rebuild from scratch.
-    // This guarantees the arrowhead is embedded in the line on every render,
-    // regardless of React StrictMode double-invocation or prior cache state.
-    segLines.current.forEach(line => layer.removeLayer(line));
-    segLines.current.clear();
+    const incoming = new Map(segments.map(s => [s.id, s]));
+
+    for (const [id, line] of Array.from(existing)) {
+      if (!incoming.has(id)) {
+        layer.removeLayer(line);
+        existing.delete(id);
+        const arrow = arrowMarkers.current.get(id);
+        if (arrow) { layer.removeLayer(arrow); arrowMarkers.current.delete(id); }
+      }
+    }
 
     for (const seg of segments) {
       const isSelected = selected === seg.id;
@@ -257,20 +283,37 @@ export default function MapView({
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         `</div>`;
 
-      const path = seg.polyline && seg.polyline.length > 1
-        ? seg.polyline
-        : [seg.start_latlng, seg.end_latlng];
-
-      // Embed V-arrowhead: fullPath = [w1, tip, w2, tip, seg_pt1, ...]
-      const arrowPts = makeArrowhead(path);
-      const fullPath = arrowPts ? [...arrowPts, ...path] : path;
-
-      const line = L.polyline(fullPath, { color, weight, opacity });
-      line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
-      line.bindPopup(popup, { maxWidth: 260 });
-      line.on('click', () => onSelectRef.current(seg.id));
-      layer.addLayer(line);
-      segLines.current.set(seg.id, line);
+      if (existing.has(seg.id)) {
+        const line = existing.get(seg.id)!;
+        line.setStyle({ color, weight, opacity });
+        line.setTooltipContent(tooltip);
+        line.setPopupContent(popup);
+        const arrow = arrowMarkers.current.get(seg.id);
+        if (arrow) {
+          arrow.setLatLng(getArrowPosition(seg));
+          arrow.setIcon(createArrowIcon(L, seg.bearing, color));
+        }
+      } else {
+        const path = seg.polyline && seg.polyline.length > 1
+          ? seg.polyline
+          : [seg.start_latlng, seg.end_latlng];
+        const line = L.polyline(
+          path,
+          { color, weight, opacity },
+        );
+        line.bindTooltip(tooltip, { sticky: true, direction: 'top' });
+        line.bindPopup(popup, { maxWidth: 260 });
+        line.on('click', () => onSelectRef.current(seg.id));
+        layer.addLayer(line);
+        existing.set(seg.id, line);
+        const arrow = L.marker(getArrowPosition(seg), {
+          icon: createArrowIcon(L, seg.bearing, color),
+          interactive: false,
+          zIndexOffset: 500,
+        });
+        layer.addLayer(arrow);
+        arrowMarkers.current.set(seg.id, arrow);
+      }
     }
   }, [segments, selected]);
 

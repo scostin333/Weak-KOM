@@ -125,6 +125,7 @@ export default function MapView({
   const segLayer    = useRef<any>(null);
   const segLines    = useRef<Map<number, any>>(new Map());
   const arrowMarkers = useRef<Map<number, any>>(new Map());
+  const startDots   = useRef<Map<number, any>>(new Map());
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -220,6 +221,7 @@ export default function MapView({
         segLayer.current  = null;
         segLines.current.clear();
         arrowMarkers.current.clear();
+        startDots.current.clear();
       }
     };
   }, []);
@@ -244,6 +246,8 @@ export default function MapView({
         existing.delete(id);
         const arrow = arrowMarkers.current.get(id);
         if (arrow) { layer.removeLayer(arrow); arrowMarkers.current.delete(id); }
+        const dot = startDots.current.get(id);
+        if (dot) { layer.removeLayer(dot); startDots.current.delete(id); }
       }
     }
 
@@ -314,6 +318,18 @@ export default function MapView({
         });
         layer.addLayer(arrow);
         arrowMarkers.current.set(seg.id, arrow);
+
+        const dot = L.circleMarker(seg.start_latlng, {
+          radius: 5,
+          color: '#fff',
+          weight: 2,
+          fillColor: '#22c55e',
+          fillOpacity: 1,
+          interactive: false,
+          zIndexOffset: 600,
+        });
+        layer.addLayer(dot);
+        startDots.current.set(seg.id, dot);
       }
     }
   }, [segments, selected]);

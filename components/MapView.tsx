@@ -319,12 +319,13 @@ export default function MapView({
         layer.addLayer(arrow);
         arrowMarkers.current.set(seg.id, arrow);
 
-        const dot = L.circleMarker(seg.start_latlng, {
-          radius: 5,
-          color: '#fff',
-          weight: 2,
-          fillColor: '#22c55e',
-          fillOpacity: 1,
+        const dot = L.marker(seg.start_latlng, {
+          icon: L.divIcon({
+            className: '',
+            html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/></svg>',
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+          }),
           interactive: false,
           zIndexOffset: 600,
         });

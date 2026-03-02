@@ -74,6 +74,15 @@ function createArrowIcon(L: any, bearing: number, color: string) {
   });
 }
 
+function createStartDotIcon(L: any) {
+  return L.divIcon({
+    className: '',
+    html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" style="display:block;filter:drop-shadow(0 0 2px rgba(0,0,0,0.6))"><circle cx="7" cy="7" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/></svg>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
 function ensureAssets(): Promise<void> {
   if (typeof window !== 'undefined' && (window as any).L?.Draw) {
     return Promise.resolve();
@@ -125,6 +134,7 @@ export default function MapView({
   const segLayer    = useRef<any>(null);
   const segLines    = useRef<Map<number, any>>(new Map());
   const arrowMarkers = useRef<Map<number, any>>(new Map());
+  const startDots   = useRef<Map<number, any>>(new Map());
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
@@ -220,6 +230,7 @@ export default function MapView({
         segLayer.current  = null;
         segLines.current.clear();
         arrowMarkers.current.clear();
+        startDots.current.clear();
       }
     };
   }, []);
@@ -244,6 +255,8 @@ export default function MapView({
         existing.delete(id);
         const arrow = arrowMarkers.current.get(id);
         if (arrow) { layer.removeLayer(arrow); arrowMarkers.current.delete(id); }
+        const dot = startDots.current.get(id);
+        if (dot) { layer.removeLayer(dot); startDots.current.delete(id); }
       }
     }
 
@@ -314,6 +327,14 @@ export default function MapView({
         });
         layer.addLayer(arrow);
         arrowMarkers.current.set(seg.id, arrow);
+
+        const dot = L.marker(seg.start_latlng, {
+          icon: createStartDotIcon(L),
+          interactive: false,
+          zIndexOffset: 600,
+        });
+        layer.addLayer(dot);
+        startDots.current.set(seg.id, dot);
       }
     }
   }, [segments, selected]);

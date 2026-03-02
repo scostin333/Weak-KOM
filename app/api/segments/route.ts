@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     // Merge explore + detail fields (detail wins on any overlap), then keep only paved.
     const segments = exploreSegments
       .map((seg, i) => ({ ...seg, ...detailResults[i] }))
-      .filter(seg => seg.surface?.toLowerCase() === 'paved');
+      .filter(seg => !seg.surface || seg.surface.toLowerCase() === 'paved');
 
     const anySucceeded = windResults.some(r => r !== null);
     const fallbackWind = anySucceeded

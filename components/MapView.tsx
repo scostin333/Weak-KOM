@@ -233,7 +233,8 @@ export default function MapView({
     const L: any = (window as any).L;
     if (!L) return;
 
-    const layer = segLayer.current;
+    const layer    = segLayer.current;
+    const existing = segLines.current;
 
     const incoming = new Map(segments.map(s => [s.id, s]));
 

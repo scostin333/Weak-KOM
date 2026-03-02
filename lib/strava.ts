@@ -36,13 +36,14 @@ export async function refreshStravaToken(refreshToken: string) {
   return res.json();
 }
 
-/** Parse KOM time strings from Strava's xoms field.
- *  Handles "SS" (sub-minute), "M:SS", and "H:MM:SS". */
-function parseKomTime(t: string | undefined): number {
-  if (!t) return 0;
-  const parts = t.split(':').map(Number);
+/** Parse KOM time strings (or raw numbers) from Strava's xoms field.
+ *  Handles numeric seconds, "SS", "M:SS", "H:MM:SS", and ":SS" edge cases. */
+function parseKomTime(t: string | number | null | undefined): number {
+  if (!t && t !== 0) return 0;
+  if (typeof t === 'number') return Math.round(t);
+  const parts = String(t).split(':').map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
-  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 2) return (isNaN(parts[0]) ? 0 : parts[0]) * 60 + parts[1];
   if (parts.length === 1 && !isNaN(parts[0])) return parts[0]; // e.g. "45"
   return 0;
 }
@@ -77,8 +78,12 @@ export async function fetchSegmentDetail(
   // Log the raw xoms so we can see the exact format.
   console.log(`[detail ${segmentId}] xoms=${JSON.stringify(s.xoms)} kom_time=${s.kom_time}`);
   // xoms.overall is a label string (e.g. "KOM"), not a time — use xoms.kom.
-  // Fall back to overall only if kom is absent.
-  const xomsTime = parseKomTime(s.xoms?.kom) || parseKomTime(s.xoms?.overall);
+  // Fall back to overall, then to the raw numeric s.kom_time from DetailedSegment.
+  const xomsTime =
+    parseKomTime(s.xoms?.kom) ||
+    parseKomTime(s.xoms?.overall) ||
+    s.kom_time ||
+    0;
 
   return {
     average_grade:  s.average_grade  ?? 0,

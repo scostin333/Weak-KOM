@@ -10,6 +10,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 
+/**
+ * Compute three points forming a "V" arrowhead at path[0] pointing toward
+ * path[look].  Returns [leftWing, tip, rightWing] in [lat,lng] form, or null
+ * if the path is too short / has no measurable direction.
+ *
+ * SIZE is in decimal degrees.  0.002 ≈ 220 m ≈ 15 px at zoom 13, which is
+ * clearly visible as a V at every typical viewing zoom.
+ */
+function makeArrowhead(path: any[]): [number, number][] | null {
+  if (path.length < 2) return null;
+  const look = Math.min(3, path.length - 1);
+  const lat0 = path[0][0], lng0 = path[0][1];
+  const lat1 = path[look][0], lng1 = path[look][1];
+  const dlat = lat1 - lat0, dlng = lng1 - lng0;
+  const len = Math.sqrt(dlat * dlat + dlng * dlng);
+  if (len < 1e-10) return null;
+
+  const fx = dlng / len, fy = dlat / len;   // forward unit vector (east, north)
+  const SIZE = 0.005;                        // ~550 m — large test size
+  const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
+
+  const w1: [number, number] = [
+    lat0 - SIZE * (fx * sa + fy * ca),
+    lng0 - SIZE * (fx * ca - fy * sa),
+  ];
+  const w2: [number, number] = [
+    lat0 + SIZE * (fx * sa - fy * ca),
+    lng0 - SIZE * (fx * ca + fy * sa),
+  ];
+  return [w1, [lat0, lng0], w2];
+}
+
 interface Props {
   segments: ScoredSegment[];
   selected: number | null;
@@ -201,8 +233,7 @@ export default function MapView({
     const L: any = (window as any).L;
     if (!L) return;
 
-    const layer    = segLayer.current;
-    const existing = segLines.current;
+    const layer = segLayer.current;
 
     const incoming = new Map(segments.map(s => [s.id, s]));
 
@@ -287,9 +318,9 @@ export default function MapView({
   }, [segments, selected]);
 
   const hintContent = {
-    draw:    '✏️  Click the rectangle tool (top-left) and drag to define a search area',
+    draw:    '>>> CODE_V9 <<< Click the rectangle tool to search',
     loading: '⏳  Fetching segments…',
-    done:    `✅  ${segments.length} segment${segments.length !== 1 ? 's' : ''} found — draw a new box to refresh`,
+    done:    `>>> CODE_V9 <<< ${segments.length} segments found`,
   }[hint];
 
   return (

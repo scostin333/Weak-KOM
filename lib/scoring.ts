@@ -112,7 +112,7 @@ export function scoreSegments(
       : calcTailwind(bearing, wind.winddirection, wind.windspeed);
 
     const breakdown = komWeaknessScore(seg);
-    const windBonus = Math.round((tailwindComponent / 40) * 15);
+    const windBonus = Math.round((tailwindComponent / 40) * 30);
     const opportunityScore = Math.min(100, Math.max(0, breakdown.total + windBonus));
 
     const prediction = prLibrary.length > 0

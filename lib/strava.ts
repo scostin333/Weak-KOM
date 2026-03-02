@@ -89,6 +89,7 @@ export async function fetchSegmentDetail(
     kom_time:       xomsTime,
     created_at:     s.created_at,
     polyline,
+    surface:        s.surface,
   };
 }
 

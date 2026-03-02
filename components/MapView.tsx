@@ -74,6 +74,15 @@ function createArrowIcon(L: any, bearing: number, color: string) {
   });
 }
 
+function createStartDotIcon(L: any) {
+  return L.divIcon({
+    className: '',
+    html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" style="display:block;filter:drop-shadow(0 0 2px rgba(0,0,0,0.6))"><circle cx="7" cy="7" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/></svg>',
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
 function ensureAssets(): Promise<void> {
   if (typeof window !== 'undefined' && (window as any).L?.Draw) {
     return Promise.resolve();
@@ -320,12 +329,7 @@ export default function MapView({
         arrowMarkers.current.set(seg.id, arrow);
 
         const dot = L.marker(seg.start_latlng, {
-          icon: L.divIcon({
-            className: '',
-            html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5" fill="#22c55e" stroke="#fff" stroke-width="2"/></svg>',
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
-          }),
+          icon: createStartDotIcon(L),
           interactive: false,
           zIndexOffset: 600,
         });

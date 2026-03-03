@@ -125,7 +125,7 @@ async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment
     end_latlng:     s.end_latlng,
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
-    kom_time:       s.kom_time       ?? 0,
+    kom_time:       parseKomTime(s.kom_time) || 0,
     starred:        s.starred        ?? false,
     created_at:     s.created_at,
   }));

@@ -266,8 +266,8 @@ export default function MapView({
       const weight     = isSelected ? 7 : 4;
       const opacity    = isSelected ? 1 : 0.85;
 
-      const komFmt = seg.kom_time > 0
-        ? `${Math.floor(seg.kom_time / 60)}:${String(seg.kom_time % 60).padStart(2, '0')}`
+      const komFmt = (seg.kom_time != null && seg.kom_time !== 0 && seg.kom_time !== '')
+        ? `${seg.kom_time}s (raw)`
         : '—';
       const speedMph = seg.kom_time > 0 && seg.distance > 0
         ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1)

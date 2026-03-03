@@ -16,8 +16,7 @@ function WindBadge({ component }: { component: number }) {
 }
 
 function formatTime(s: number) {
-  const m = Math.floor(s / 60);
-  return `${m}:${String(s % 60).padStart(2, '0')}`;
+  return `${s}s`;
 }
 
 function ScoreBar({ value, label, color }: { value: number; label: string; color: string }) {

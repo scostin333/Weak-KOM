@@ -91,7 +91,10 @@ export async function fetchSegmentDetail(
     elevation_low:  s.elevation_low  ?? 0,
     effort_count:   s.effort_count   ?? 0,
     athlete_count:  s.athlete_count  ?? 0,
-    kom_time:       xomsTime,
+    // Only overwrite kom_time when we parsed a real value. If xomsTime is 0
+    // (xoms null / unparseable and s.kom_time absent), omit the key so the
+    // Explore API's kom_time (an integer in seconds) survives the merge.
+    ...(xomsTime > 0 ? { kom_time: xomsTime } : {}),
     created_at:     s.created_at,
     polyline,
     surface:        s.surface,

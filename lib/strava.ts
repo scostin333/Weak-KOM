@@ -64,7 +64,7 @@ export async function fetchSegmentDetail(
 ): Promise<Partial<StravaSegment>> {
   const res = await fetch(`${BASE}/segments/${segmentId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    next: { revalidate: 3600 },
+    cache: 'no-store',
   });
   if (!res.ok) return {};
   const s = await res.json();
@@ -113,6 +113,11 @@ async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment
     return [];
   }
   const data = await res.json();
+  // Log a sample to see what the Explore API actually returns for kom_time.
+  if (data.segments?.length) {
+    const sample = data.segments[0];
+    console.log(`[explore sample] id=${sample.id} name="${sample.name}" kom_time=${JSON.stringify(sample.kom_time)} (type=${typeof sample.kom_time}) keys=${Object.keys(sample).join(',')}`);
+  }
   // Explore returns ExplorerSegment objects — normalise to our StravaSegment shape.
   return (data.segments ?? []).map((s: any): StravaSegment => ({
     id:             s.id,

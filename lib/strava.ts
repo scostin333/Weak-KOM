@@ -37,14 +37,24 @@ export async function refreshStravaToken(refreshToken: string) {
 }
 
 /** Parse KOM time strings (or raw numbers) from Strava's xoms field.
- *  Handles numeric seconds, "SS", "M:SS", "H:MM:SS", and ":SS" edge cases. */
+ *  Handles all known formats:
+ *    "45s"      → 45   (sub-minute: Strava appends a literal "s")
+ *    "3:22"     → 202  (M:SS)
+ *    "1:03:32"  → 3812 (H:MM:SS)
+ *    45         → 45   (raw integer seconds from ExplorerSegment) */
 function parseKomTime(t: string | number | null | undefined): number {
   if (!t && t !== 0) return 0;
   if (typeof t === 'number') return Math.round(t);
-  const parts = String(t).split(':').map(Number);
+  const s = String(t).trim();
+  // Sub-minute format: "45s"
+  if (s.endsWith('s')) {
+    const n = Number(s.slice(0, -1));
+    if (!isNaN(n)) return Math.round(n);
+  }
+  const parts = s.split(':').map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   if (parts.length === 2) return (isNaN(parts[0]) ? 0 : parts[0]) * 60 + parts[1];
-  if (parts.length === 1 && !isNaN(parts[0])) return parts[0]; // e.g. "45"
+  if (parts.length === 1 && !isNaN(parts[0])) return parts[0];
   return 0;
 }
 
@@ -64,7 +74,7 @@ export async function fetchSegmentDetail(
 ): Promise<Partial<StravaSegment>> {
   const res = await fetch(`${BASE}/segments/${segmentId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    cache: 'no-store',
+    next: { revalidate: 3600 },
   });
   if (!res.ok) return {};
   const s = await res.json();
@@ -74,11 +84,8 @@ export async function fetchSegmentDetail(
     ? decodePolyline(encodedPolyline)
     : undefined;
 
-  // KOM time: Strava returns it as a formatted string in xoms.overall / xoms.kom.
-  // Log the raw xoms so we can see the exact format.
-  console.log(`[detail ${segmentId}] xoms=${JSON.stringify(s.xoms)} kom_time=${s.kom_time}`);
-  // xoms.overall is a label string (e.g. "KOM"), not a time — use xoms.kom.
-  // Fall back to overall, then to the raw numeric s.kom_time from DetailedSegment.
+  // KOM time: Strava formats xoms.kom as "45s" (sub-minute), "M:SS", or "H:MM:SS".
+  // xoms.overall uses the same format. Fall back through both, then the raw integer.
   const xomsTime =
     parseKomTime(s.xoms?.kom) ||
     parseKomTime(s.xoms?.overall) ||
@@ -113,11 +120,6 @@ async function fetchTile(bbox: BBox, accessToken: string): Promise<StravaSegment
     return [];
   }
   const data = await res.json();
-  // Log a sample to see what the Explore API actually returns for kom_time.
-  if (data.segments?.length) {
-    const sample = data.segments[0];
-    console.log(`[explore sample] id=${sample.id} name="${sample.name}" kom_time=${JSON.stringify(sample.kom_time)} (type=${typeof sample.kom_time}) keys=${Object.keys(sample).join(',')}`);
-  }
   // Explore returns ExplorerSegment objects — normalise to our StravaSegment shape.
   return (data.segments ?? []).map((s: any): StravaSegment => ({
     id:             s.id,

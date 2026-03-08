@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
       bbox,
       accessToken,
       prLibrary = [],
-    }: { bbox: BBox; accessToken: string; prLibrary?: any[] } = await req.json();
+      athleteSex,
+    }: { bbox: BBox; accessToken: string; prLibrary?: any[]; athleteSex?: string } = await req.json();
 
     if (!accessToken) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 });
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const [detailResults, windResults] = await Promise.all([
       Promise.all(
         exploreSegments.map(seg =>
-          fetchSegmentDetail(seg.id, accessToken).catch(() => ({}))
+          fetchSegmentDetail(seg.id, accessToken, athleteSex).catch(() => ({}))
         )
       ),
       Promise.all(
@@ -37,10 +38,18 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Merge explore + detail fields (detail wins on any overlap), then keep only paved.
+    // Normalize surface: capitalize and default to "Paved" (the filter guarantees nothing
+    // explicitly non-paved gets through, so null/undefined means paved or unknown-but-paved).
     const segments = exploreSegments
       .map((seg, i) => ({ ...seg, ...detailResults[i] }))
       .filter(seg => !seg.private)
-      .filter(seg => !seg.surface || seg.surface.toLowerCase() === 'paved');
+      .filter(seg => !seg.surface || seg.surface.toLowerCase() === 'paved')
+      .map(seg => ({
+        ...seg,
+        surface: seg.surface
+          ? seg.surface.charAt(0).toUpperCase() + seg.surface.slice(1).toLowerCase()
+          : 'Paved',
+      }));
 
     const anySucceeded = windResults.some(r => r !== null);
     const fallbackWind = anySucceeded

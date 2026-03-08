@@ -6,6 +6,7 @@ interface Props {
   selected: number | null;
   onSelect: (id: number) => void;
   showPredictions?: boolean;
+  crLabel?: string;
 }
 
 function WindBadge({ component }: { component: number }) {
@@ -115,7 +116,7 @@ function PredictionPanel({ p, komTime }: { p: PredictionResult; komTime: number 
   );
 }
 
-export default function SegmentList({ segments, selected, onSelect, showPredictions }: Props) {
+export default function SegmentList({ segments, selected, onSelect, showPredictions, crLabel = 'KOM' }: Props) {
   if (!segments.length) {
     return (
       <div className="text-gray-400 text-sm p-4 text-center">
@@ -161,9 +162,9 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
             <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
               {seg.kom_time > 0
                 ? <span className="text-gray-300">
-                    KOM {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}
+                    {crLabel} {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}
                   </span>
-                : <span className="text-gray-500">KOM —</span>
+                : <span className="text-gray-500">{crLabel} —</span>
               }
               {seg.userBestTime && (
                 <span className="text-blue-400">

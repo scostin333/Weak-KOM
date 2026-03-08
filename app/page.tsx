@@ -21,6 +21,7 @@ interface Athlete {
   firstname: string;
   lastname: string;
   profile_medium: string;
+  sex?: string;   // 'M' or 'F' from Strava
 }
 
 type PRStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -106,7 +107,7 @@ export default function HomePage() {
       const res = await fetch('/api/segments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bbox, accessToken, prLibrary }),
+        body: JSON.stringify({ bbox, accessToken, prLibrary, athleteSex: athlete?.sex }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'API error');
@@ -220,6 +221,7 @@ export default function HomePage() {
         selected={selected}
         onSelect={setSelected}
         showPredictions={prStatus === 'ready'}
+        crLabel={athlete?.sex === 'F' ? 'QOM' : 'KOM'}
       />
     </>
   );
@@ -272,6 +274,7 @@ export default function HomePage() {
             onSelect={setSelected}
             onBBoxDrawn={handleBBoxDrawn}
             loading={loading}
+            crLabel={athlete?.sex === 'F' ? 'QOM' : 'KOM'}
           />
         </main>
 

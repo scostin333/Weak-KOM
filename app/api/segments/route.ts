@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Merge explore + detail fields (detail wins on any overlap), then keep only paved/unknown.
-    // Only label a segment "Paved" when Strava explicitly says so; anything else is "Unknown".
+    // Only label a segment "Paved" when Strava explicitly says so; anything else is "Unknown Surface".
     const segments = exploreSegments
       .map((seg, i) => ({ ...seg, ...detailResults[i] }))
       .filter(seg => !seg.private)
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         ...seg,
         surface: seg.surface
           ? seg.surface.charAt(0).toUpperCase() + seg.surface.slice(1).toLowerCase()
-          : 'Unknown',
+          : 'Unknown Surface',
       }));
 
     const anySucceeded = windResults.some(r => r !== null);

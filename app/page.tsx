@@ -1,11 +1,19 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
 import InfoModal from '@/components/InfoModal';
 import { ScoredSegment, BBox, AthletePREffort } from '@/types';
 import { useEffect } from 'react';
+
+function scoreColor(score: number): string {
+  if (score >= 75) return '#22c55e';
+  if (score >= 55) return '#84cc16';
+  if (score >= 40) return '#eab308';
+  if (score >= 25) return '#f97316';
+  return '#ef4444';
+}
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -30,6 +38,7 @@ export default function HomePage() {
   const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
   const [prCount,     setPrCount    ] = useState(0);
   const [mobileTab,   setMobileTab  ] = useState<'map' | 'list'>('map');
+  const [windWeight,  setWindWeight ] = useState(1.0);
 
   // ── OAuth token ingestion from URL ───────────────────────────────────────
   useEffect(() => {
@@ -123,6 +132,15 @@ export default function HomePage() {
 
   const predictedCount = segments.filter(s => s.prediction).length;
 
+  const displaySegments = useMemo<ScoredSegment[]>(() =>
+    segments.map(seg => {
+      const windBonus = Math.round((seg.tailwindComponent / 40) * 30 * windWeight);
+      const opportunityScore = Math.min(100, Math.max(0, seg.komWeaknessScore + windBonus));
+      return { ...seg, opportunityScore, color: scoreColor(opportunityScore) };
+    }),
+    [segments, windWeight],
+  );
+
   // ── Sidebar panel (shared by desktop aside + mobile overlay) ─────────────
   const sidebarPanel = (
     <>
@@ -167,6 +185,23 @@ export default function HomePage() {
           <span className="text-xs text-gray-500 ml-1">Opportunity</span>
         </div>
 
+        {/* Wind influence slider */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400 shrink-0">Wind</span>
+          <input
+            type="range"
+            min={0}
+            max={2}
+            step={0.1}
+            value={windWeight}
+            onChange={e => setWindWeight(parseFloat(e.target.value))}
+            className="flex-1 accent-orange-500 h-1"
+          />
+          <span className="text-xs text-gray-300 w-6 text-right">
+            {windWeight === 0 ? 'Off' : `${windWeight.toFixed(1)}×`}
+          </span>
+        </div>
+
         {!accessToken && (
           <p className="text-xs text-gray-500 italic">
             Connect Strava to unlock PR predictions
@@ -181,7 +216,7 @@ export default function HomePage() {
       )}
 
       <SegmentList
-        segments={segments}
+        segments={displaySegments}
         selected={selected}
         onSelect={setSelected}
         showPredictions={prStatus === 'ready'}
@@ -234,7 +269,7 @@ export default function HomePage() {
         {/* Map — always rendered so Leaflet stays initialised */}
         <main className="flex-1 relative">
           <MapView
-            segments={segments}
+            segments={displaySegments}
             selected={selected}
             onSelect={setSelected}
             onBBoxDrawn={handleBBoxDrawn}

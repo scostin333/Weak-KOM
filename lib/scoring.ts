@@ -107,9 +107,17 @@ export function scoreSegments(
       seg.start_latlng[0], seg.start_latlng[1],
       seg.end_latlng[0],   seg.end_latlng[1],
     );
-    const tailwindComponent = windResult
-      ? windResult.tailwindKmh
-      : calcTailwind(bearing, wind.winddirection, wind.windspeed);
+    // Looped segments have no net direction — treat as crosswind
+    const dlat = (seg.end_latlng[0] - seg.start_latlng[0]) * 111000;
+    const dlng = (seg.end_latlng[1] - seg.start_latlng[1]) * 111000 *
+      Math.cos(((seg.start_latlng[0] + seg.end_latlng[0]) / 2) * (Math.PI / 180));
+    const isLooped = Math.sqrt(dlat * dlat + dlng * dlng) < 50;
+
+    const tailwindComponent = isLooped
+      ? 0
+      : windResult
+        ? windResult.tailwindKmh
+        : calcTailwind(bearing, wind.winddirection, wind.windspeed);
 
     const breakdown = komWeaknessScore(seg);
     const windBonus = Math.round((tailwindComponent / 40) * 30);

@@ -155,6 +155,7 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
               {(seg.distance / 1000).toFixed(1)} km ·{' '}
               {seg.average_grade > 0 ? '+' : ''}{seg.average_grade.toFixed(1)}% ·{' '}
               {seg.effort_count.toLocaleString()} efforts
+              {seg.surface ? ` · ${seg.surface}` : ''}
             </p>
 
             <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">

@@ -147,14 +147,19 @@ export function predictSegmentTime(
 
 /**
  * Builds an `AthletePREffort` array from raw Strava segment efforts.
+ * Only efforts from the last 12 months are included.
  */
 export function buildPRLibrary(rawEfforts: any[]): AthletePREffort[] {
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - 1);
+
   return rawEfforts
     .filter(e =>
       typeof e.elapsed_time === 'number' &&
       typeof e.distance     === 'number' &&
       e.distance > 0 &&
-      e.segment?.average_grade !== undefined
+      e.segment?.average_grade !== undefined &&
+      e.start_date && new Date(e.start_date) >= cutoff
     )
     .map(e => ({
       segmentId:   e.segment?.id   ?? e.id,

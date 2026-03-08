@@ -290,6 +290,7 @@ export default function MapView({
         `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
         `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
         `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
+        (seg.surface ? `<br>Surface: ${seg.surface}` : '') +
         `</div>`;
 
       const gradeStr = `${seg.average_grade > 0 ? '+' : ''}${seg.average_grade.toFixed(1)}%`;
@@ -306,6 +307,7 @@ export default function MapView({
         `</div>` +
         `KOM: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
+        (seg.surface ? `<br>Surface: ${seg.surface}` : '') +
         `</div>`;
 
       if (existing.has(seg.id)) {

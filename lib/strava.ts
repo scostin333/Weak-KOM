@@ -93,6 +93,7 @@ export async function fetchSegmentDetail(
     0;
 
   return {
+    private:        s.private        ?? false,
     average_grade:  s.average_grade  ?? 0,
     elevation_high: s.elevation_high ?? 0,
     elevation_low:  s.elevation_low  ?? 0,

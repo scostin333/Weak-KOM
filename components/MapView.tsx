@@ -9,37 +9,59 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ScoredSegment, BBox } from '@/types';
+import { calcBearing } from '@/lib/wind';
+
+const MILE_M = 1609.34;
+
+function haversineDist(a: [number, number], b: [number, number]): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => d * Math.PI / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const s = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
 
 /**
- * Compute three points forming a "V" arrowhead at path[0] pointing toward
- * path[look].  Returns [leftWing, tip, rightWing] in [lat,lng] form, or null
- * if the path is too short / has no measurable direction.
- *
- * SIZE is in decimal degrees.  0.002 ≈ 220 m ≈ 15 px at zoom 13, which is
- * clearly visible as a V at every typical viewing zoom.
+ * Returns one { latlng, bearing } entry per mile along the segment polyline.
+ * Segments shorter than one mile get a single arrow at the midpoint.
  */
-function makeArrowhead(path: any[]): [number, number][] | null {
-  if (path.length < 2) return null;
-  const look = Math.min(3, path.length - 1);
-  const lat0 = path[0][0], lng0 = path[0][1];
-  const lat1 = path[look][0], lng1 = path[look][1];
-  const dlat = lat1 - lat0, dlng = lng1 - lng0;
-  const len = Math.sqrt(dlat * dlat + dlng * dlng);
-  if (len < 1e-10) return null;
+function getMileArrowPositions(seg: ScoredSegment): { latlng: [number, number]; bearing: number }[] {
+  const path: [number, number][] = (seg.polyline && seg.polyline.length > 1)
+    ? seg.polyline
+    : [seg.start_latlng, seg.end_latlng];
 
-  const fx = dlng / len, fy = dlat / len;   // forward unit vector (east, north)
-  const SIZE = 0.005;                        // ~550 m — large test size
-  const ca = Math.cos(Math.PI / 5), sa = Math.sin(Math.PI / 5); // 36°
+  // Accumulate total distance to decide how many arrows to place.
+  let totalDist = 0;
+  for (let i = 1; i < path.length; i++) totalDist += haversineDist(path[i - 1], path[i]);
 
-  const w1: [number, number] = [
-    lat0 - SIZE * (fx * sa + fy * ca),
-    lng0 - SIZE * (fx * ca - fy * sa),
-  ];
-  const w2: [number, number] = [
-    lat0 + SIZE * (fx * sa - fy * ca),
-    lng0 - SIZE * (fx * ca + fy * sa),
-  ];
-  return [w1, [lat0, lng0], w2];
+  // Shorter than one mile → single arrow at polyline midpoint.
+  if (totalDist < MILE_M) {
+    const midIdx = Math.floor(path.length / 2);
+    const lookIdx = Math.min(midIdx + 4, path.length - 1);
+    return [{ latlng: path[midIdx], bearing: calcBearing(path[midIdx][0], path[midIdx][1], path[lookIdx][0], path[lookIdx][1]) }];
+  }
+
+  // Walk the polyline, dropping an arrow at every mile mark.
+  const results: { latlng: [number, number]; bearing: number }[] = [];
+  let accumulated = 0;
+  let nextMile = MILE_M;
+
+  for (let i = 1; i < path.length; i++) {
+    const segDist = haversineDist(path[i - 1], path[i]);
+    while (accumulated + segDist >= nextMile) {
+      const t = (nextMile - accumulated) / segDist;
+      const latlng: [number, number] = [
+        path[i - 1][0] + t * (path[i][0] - path[i - 1][0]),
+        path[i - 1][1] + t * (path[i][1] - path[i - 1][1]),
+      ];
+      results.push({ latlng, bearing: calcBearing(path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]) });
+      nextMile += MILE_M;
+    }
+    accumulated += segDist;
+  }
+  return results;
 }
 
 interface Props {
@@ -53,19 +75,6 @@ interface Props {
 const LEAFLET_VERSION = '1.9.4';
 const DRAW_VERSION    = '1.0.4';
 
-function getArrowPosition(seg: ScoredSegment): [number, number] {
-  const [lat1, lng1] = seg.start_latlng;
-  const [lat2, lng2] = seg.end_latlng;
-  // For all segments (including looped ones), prefer the polyline midpoint so
-  // the arrow never lands on top of the green start dot.
-  if (seg.polyline && seg.polyline.length > 1)
-    return seg.polyline[Math.floor(seg.polyline.length / 2)];
-  const dlat = (lat2 - lat1) * 111000;
-  const dlng = (lng2 - lng1) * 111000 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
-  const endDist = Math.sqrt(dlat * dlat + dlng * dlng);
-  if (endDist < 50) return seg.start_latlng; // looped, no polyline — fall back to start
-  return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
-}
 
 function createArrowIcon(L: any, bearing: number, color: string) {
   return L.divIcon({
@@ -135,7 +144,7 @@ export default function MapView({
   const drawLayer   = useRef<any>(null);
   const segLayer    = useRef<any>(null);
   const segLines    = useRef<Map<number, any>>(new Map());
-  const arrowMarkers = useRef<Map<number, any>>(new Map());
+  const arrowMarkers = useRef<Map<number, any[]>>(new Map());
   const startDots   = useRef<Map<number, any>>(new Map());
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
@@ -255,8 +264,8 @@ export default function MapView({
       if (!incoming.has(id)) {
         layer.removeLayer(line);
         existing.delete(id);
-        const arrow = arrowMarkers.current.get(id);
-        if (arrow) { layer.removeLayer(arrow); arrowMarkers.current.delete(id); }
+        const arrows = arrowMarkers.current.get(id);
+        if (arrows) { arrows.forEach(a => layer.removeLayer(a)); arrowMarkers.current.delete(id); }
         const dot = startDots.current.get(id);
         if (dot) { layer.removeLayer(dot); startDots.current.delete(id); }
       }
@@ -304,10 +313,9 @@ export default function MapView({
         line.setStyle({ color, weight, opacity });
         line.setTooltipContent(tooltip);
         line.setPopupContent(popup);
-        const arrow = arrowMarkers.current.get(seg.id);
-        if (arrow) {
-          arrow.setLatLng(getArrowPosition(seg));
-          arrow.setIcon(createArrowIcon(L, seg.bearing, color));
+        const arrows = arrowMarkers.current.get(seg.id);
+        if (arrows) {
+          arrows.forEach(a => a.setIcon(createArrowIcon(L, a._bearing, color)));
         }
       } else {
         const path = seg.polyline && seg.polyline.length > 1
@@ -322,13 +330,18 @@ export default function MapView({
         line.on('click', () => onSelectRef.current(seg.id));
         layer.addLayer(line);
         existing.set(seg.id, line);
-        const arrow = L.marker(getArrowPosition(seg), {
-          icon: createArrowIcon(L, seg.bearing, color),
-          interactive: false,
-          zIndexOffset: 500,
+        const milePositions = getMileArrowPositions(seg);
+        const arrows = milePositions.map(({ latlng, bearing }) => {
+          const a = L.marker(latlng, {
+            icon: createArrowIcon(L, bearing, color),
+            interactive: false,
+            zIndexOffset: 500,
+          });
+          a._bearing = bearing;
+          layer.addLayer(a);
+          return a;
         });
-        layer.addLayer(arrow);
-        arrowMarkers.current.set(seg.id, arrow);
+        arrowMarkers.current.set(seg.id, arrows);
 
         const dot = L.marker(seg.start_latlng, {
           icon: createStartDotIcon(L),

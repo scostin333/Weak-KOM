@@ -357,9 +357,9 @@ export default function MapView({
   }, [segments, selected]);
 
   const hintContent = {
-    draw:    '>>> CODE_V9 <<< Click the rectangle tool to search',
+    draw:    'Click the rectangle tool to search',
     loading: '⏳  Fetching segments…',
-    done:    `>>> CODE_V9 <<< ${segments.length} segments found`,
+    done:    `${segments.length} segments found`,
   }[hint];
 
   return (

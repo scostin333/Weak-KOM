@@ -149,6 +149,11 @@ score = clamp(base×100 + wind_bonus, 0, 100)`}
               distance and grade). The <span className="text-white font-semibold">Confidence</span> score
               tells you how reliable that prediction is.
             </p>
+            <p className="text-xs text-gray-400 leading-relaxed mb-3">
+              Note: predicted times are based on your past performances and do{' '}
+              <span className="text-white font-semibold">not</span> account for current wind
+              conditions. Wind only affects the Opportunity Score ranking, not the time estimate.
+            </p>
             <div className="space-y-4">
               <Factor name="Coverage" weight="max 40 pts" color="#f97316">
                 How many of your past PRs were close enough to use as references (up to 5).

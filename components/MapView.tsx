@@ -56,12 +56,14 @@ const DRAW_VERSION    = '1.0.4';
 function getArrowPosition(seg: ScoredSegment): [number, number] {
   const [lat1, lng1] = seg.start_latlng;
   const [lat2, lng2] = seg.end_latlng;
+  // For all segments (including looped ones), prefer the polyline midpoint so
+  // the arrow never lands on top of the green start dot.
+  if (seg.polyline && seg.polyline.length > 1)
+    return seg.polyline[Math.floor(seg.polyline.length / 2)];
   const dlat = (lat2 - lat1) * 111000;
   const dlng = (lng2 - lng1) * 111000 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
   const endDist = Math.sqrt(dlat * dlat + dlng * dlng);
-  if (endDist < 50) return seg.start_latlng; // circular — use start/finish point
-  if (seg.polyline && seg.polyline.length > 1)
-    return seg.polyline[Math.floor(seg.polyline.length / 2)];
+  if (endDist < 50) return seg.start_latlng; // looped, no polyline — fall back to start
   return [(lat1 + lat2) / 2, (lng1 + lng2) / 2];
 }
 

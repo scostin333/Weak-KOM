@@ -103,15 +103,28 @@ export function scoreSegments(
   return segments.map((seg) => {
     const windResult = seg._wind ?? null;
 
-    const bearing = windResult?.bearing ?? calcBearing(
-      seg.start_latlng[0], seg.start_latlng[1],
-      seg.end_latlng[0],   seg.end_latlng[1],
-    );
-    // Looped segments have no net direction — treat as crosswind
     const dlat = (seg.end_latlng[0] - seg.start_latlng[0]) * 111000;
     const dlng = (seg.end_latlng[1] - seg.start_latlng[1]) * 111000 *
       Math.cos(((seg.start_latlng[0] + seg.end_latlng[0]) / 2) * (Math.PI / 180));
     const isLooped = Math.sqrt(dlat * dlat + dlng * dlng) < 50;
+
+    // For looped segments derive bearing from the first few polyline points so
+    // the arrow icon shows the actual travel direction instead of defaulting to 0°.
+    const loopedBearing = (() => {
+      const poly = seg.polyline;
+      if (poly && poly.length >= 2) {
+        const look = Math.min(4, poly.length - 1);
+        return calcBearing(poly[0][0], poly[0][1], poly[look][0], poly[look][1]);
+      }
+      return 0;
+    })();
+
+    const bearing = isLooped
+      ? loopedBearing
+      : (windResult?.bearing ?? calcBearing(
+          seg.start_latlng[0], seg.start_latlng[1],
+          seg.end_latlng[0],   seg.end_latlng[1],
+        ));
 
     const tailwindComponent = isLooped
       ? 0

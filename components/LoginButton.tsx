@@ -4,6 +4,7 @@ interface Athlete {
   firstname: string;
   lastname: string;
   profile_medium: string;
+  sex?: string;
 }
 
 interface Props {

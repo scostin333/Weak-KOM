@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
       bbox,
       accessToken,
       prLibrary = [],
-    }: { bbox: BBox; accessToken: string; prLibrary?: any[] } = await req.json();
+      athleteSex,
+    }: { bbox: BBox; accessToken: string; prLibrary?: any[]; athleteSex?: string } = await req.json();
 
     if (!accessToken) {
       return NextResponse.json({ error: 'No access token' }, { status: 401 });
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     const [detailResults, windResults] = await Promise.all([
       Promise.all(
         exploreSegments.map(seg =>
-          fetchSegmentDetail(seg.id, accessToken).catch(() => ({}))
+          fetchSegmentDetail(seg.id, accessToken, athleteSex).catch(() => ({}))
         )
       ),
       Promise.all(

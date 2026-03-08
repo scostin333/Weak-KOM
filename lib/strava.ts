@@ -71,6 +71,7 @@ function parseKomTime(t: string | number | null | undefined): number {
 export async function fetchSegmentDetail(
   segmentId: number,
   accessToken: string,
+  athleteSex?: string,
 ): Promise<Partial<StravaSegment>> {
   const res = await fetch(`${BASE}/segments/${segmentId}`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -84,13 +85,13 @@ export async function fetchSegmentDetail(
     ? decodePolyline(encodedPolyline)
     : undefined;
 
-  // KOM time: Strava formats xoms.kom as "45s" (sub-minute), "M:SS", or "H:MM:SS".
-  // xoms.overall uses the same format. Fall back through both, then the raw integer.
-  const xomsTime =
-    parseKomTime(s.xoms?.kom) ||
-    parseKomTime(s.xoms?.overall) ||
-    s.kom_time ||
-    0;
+  // Pick the KOM or QOM time depending on the athlete's sex.
+  // Strava formats these as "45s", "M:SS", or "H:MM:SS"; fall back through
+  // xoms.overall then the raw integer when the preferred field is absent.
+  const isFemale = athleteSex === 'F';
+  const xomsTime = isFemale
+    ? parseKomTime(s.xoms?.qom)    || parseKomTime(s.xoms?.overall) || s.kom_time || 0
+    : parseKomTime(s.xoms?.kom)    || parseKomTime(s.xoms?.overall) || s.kom_time || 0;
 
   return {
     private:        s.private        ?? false,

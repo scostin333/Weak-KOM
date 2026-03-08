@@ -70,6 +70,7 @@ interface Props {
   onSelect: (id: number) => void;
   onBBoxDrawn: (bbox: BBox) => void;
   loading?: boolean;
+  crLabel?: string;
 }
 
 const LEAFLET_VERSION = '1.9.4';
@@ -132,6 +133,7 @@ export default function MapView({
   onSelect,
   onBBoxDrawn,
   loading = false,
+  crLabel = 'KOM',
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -287,7 +289,7 @@ export default function MapView({
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.5">` +
         `<b>${seg.name}</b><br>` +
         `Score: <b style="color:${seg.color}">${seg.opportunityScore}/100</b><br>` +
-        `KOM: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
+        `${crLabel}: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
         `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
         `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
         (seg.surface ? `<br>Surface: ${seg.surface}` : '') +
@@ -305,7 +307,7 @@ export default function MapView({
             `<span style="font-size:11px;color:#555"> mph avg speed</span>`
           : `<span style="font-size:12px;color:#888">Speed unavailable</span>`) +
         `</div>` +
-        `KOM: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
+        `${crLabel}: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +
         `Grade: ${gradeStr} &nbsp;·&nbsp; Wind: ${windStr}` +
         (seg.surface ? `<br>Surface: ${seg.surface}` : '') +
         `</div>`;

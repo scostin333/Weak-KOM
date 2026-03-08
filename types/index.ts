@@ -21,6 +21,7 @@ export interface StravaSegment {
   created_at?: string;
   polyline?: [number, number][];  // decoded GPS path (lat/lng pairs)
   surface?: string;               // e.g. "Paved", "Unpaved", "Gravel"
+  private?: boolean;              // true = private segment, not publicly visible
 }
 
 export interface WindData {

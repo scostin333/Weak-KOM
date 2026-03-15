@@ -7,9 +7,15 @@
  * SSR quirks that make `import('leaflet-draw')` unreliable in Next.js.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { ScoredSegment, BBox } from '@/types';
 import { calcBearing } from '@/lib/wind';
+
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
 
 const MILE_M = 1609.34;
 
@@ -153,6 +159,42 @@ export default function MapView({
 
   const [hint, setHint] = useState<'draw' | 'loading' | 'done'>('draw');
 
+  // ── Location search ──────────────────────────────────────────────────────
+  const [searchQuery,   setSearchQuery  ] = useState('');
+  const [suggestions,   setSuggestions  ] = useState<NominatimResult[]>([]);
+  const [searchBusy,    setSearchBusy   ] = useState(false);
+  const [dropdownOpen,  setDropdownOpen ] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchInput = useCallback((value: string) => {
+    setSearchQuery(value);
+    setDropdownOpen(true);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (value.trim().length < 2) { setSuggestions([]); return; }
+    searchTimer.current = setTimeout(async () => {
+      setSearchBusy(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5`,
+          { headers: { 'Accept-Language': 'en' } },
+        );
+        const data: NominatimResult[] = await res.json();
+        setSuggestions(data);
+      } catch { /* ignore */ } finally {
+        setSearchBusy(false);
+      }
+    }, 320);
+  }, []);
+
+  const handleSelectSuggestion = useCallback((s: NominatimResult) => {
+    setSearchQuery(s.display_name);
+    setSuggestions([]);
+    setDropdownOpen(false);
+    if (mapRef.current) {
+      mapRef.current.flyTo([parseFloat(s.lat), parseFloat(s.lon)], 13, { duration: 1.2 });
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -172,6 +214,15 @@ export default function MapView({
         zoomControl: true,
         preferCanvas: true,
       }).setView([42.0884, -87.9806], 13);
+
+      // Fly to user's current location if available
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => { if (!cancelled) map.setView([pos.coords.latitude, pos.coords.longitude], 13); },
+          () => { /* keep default */ },
+          { timeout: 6000 },
+        );
+      }
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
@@ -375,6 +426,52 @@ export default function MapView({
   return (
     <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
+
+      {/* ── Location search bar ── */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-72 sm:w-96">
+        <div className="relative">
+          <div className="flex items-center bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-gray-400 shrink-0 ml-3">
+              <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => handleSearchInput(e.target.value)}
+              onFocus={() => setDropdownOpen(true)}
+              onBlur={() => setTimeout(() => setDropdownOpen(false), 150)}
+              placeholder="Search location…"
+              className="flex-1 px-2.5 py-2.5 text-sm text-gray-800 placeholder-gray-400 bg-transparent outline-none"
+            />
+            {searchBusy && (
+              <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mr-3 shrink-0" />
+            )}
+            {searchQuery && !searchBusy && (
+              <button
+                onMouseDown={e => { e.preventDefault(); setSearchQuery(''); setSuggestions([]); }}
+                className="text-gray-400 hover:text-gray-600 mr-3 shrink-0 text-lg leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {dropdownOpen && suggestions.length > 0 && (
+            <ul className="absolute top-full mt-1 w-full bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden max-h-60 overflow-y-auto">
+              {suggestions.map((s, i) => (
+                <li key={i}>
+                  <button
+                    onMouseDown={e => { e.preventDefault(); handleSelectSuggestion(s); }}
+                    className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-colors border-b border-gray-100 last:border-0"
+                  >
+                    {s.display_name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       <div
         className={`

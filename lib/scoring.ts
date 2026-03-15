@@ -142,6 +142,11 @@ export function scoreSegments(
 
     const { _wind, ...rest } = seg as any;
 
+    const userBestTime  = rest.userBestTime;
+    const userTimeDelta = userBestTime != null && seg.kom_time > 0
+      ? userBestTime - seg.kom_time
+      : undefined;
+
     return {
       ...rest,
       bearing,
@@ -152,6 +157,8 @@ export function scoreSegments(
       opportunityScore,
       color: scoreColor(opportunityScore),
       prediction,
+      ...(userBestTime  !== undefined ? { userBestTime  } : {}),
+      ...(userTimeDelta !== undefined ? { userTimeDelta } : {}),
     };
   });
 }

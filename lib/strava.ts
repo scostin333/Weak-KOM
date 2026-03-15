@@ -93,6 +93,14 @@ export async function fetchSegmentDetail(
     ? parseKomTime(s.xoms?.qom)    || parseKomTime(s.xoms?.overall) || s.kom_time || 0
     : parseKomTime(s.xoms?.kom)    || parseKomTime(s.xoms?.overall) || s.kom_time || 0;
 
+  // athlete_segment_stats.pr_elapsed_time is the authenticated athlete's
+  // personal best on this segment in seconds (0 or absent if never ridden).
+  const prTime: number | undefined =
+    typeof s.athlete_segment_stats?.pr_elapsed_time === 'number' &&
+    s.athlete_segment_stats.pr_elapsed_time > 0
+      ? s.athlete_segment_stats.pr_elapsed_time
+      : undefined;
+
   return {
     private:        s.private        ?? false,
     average_grade:  s.average_grade  ?? 0,
@@ -107,6 +115,7 @@ export async function fetchSegmentDetail(
     created_at:     s.created_at,
     polyline,
     surface:        s.surface,
+    ...(prTime !== undefined ? { userBestTime: prTime } : {}),
   };
 }
 

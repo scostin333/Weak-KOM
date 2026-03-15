@@ -241,9 +241,13 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                 {seg.name}
               </p>
               <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white shrink-0"
-                style={{ backgroundColor: seg.color }}
-                title="Opportunity score"
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0"
+                style={
+                  seg.userTimeDelta != null && seg.userTimeDelta <= 0
+                    ? { backgroundColor: '#000', color: '#fff' }
+                    : { backgroundColor: seg.color, color: '#fff' }
+                }
+                title={seg.userTimeDelta != null && seg.userTimeDelta <= 0 ? 'You hold the KOM' : 'Opportunity score'}
               >
                 {seg.opportunityScore}
               </div>
@@ -263,9 +267,14 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                   </span>
                 : <span className="text-gray-500">{crLabel} —</span>
               }
-              {seg.userBestTime && (
+              {seg.userBestTime && seg.userTimeDelta != null && seg.userTimeDelta <= 0 && (
+                <span className="text-yellow-300 font-semibold">
+                  👑 You hold the {crLabel}
+                </span>
+              )}
+              {seg.userBestTime && seg.userTimeDelta != null && seg.userTimeDelta > 0 && (
                 <span className="text-blue-400">
-                  PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta ?? 0)})
+                  PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta)})
                 </span>
               )}
               <WindBadge component={seg.tailwindComponent} speedUnit={speedUnit} />

@@ -22,6 +22,7 @@ export interface StravaSegment {
   polyline?: [number, number][];  // decoded GPS path (lat/lng pairs)
   surface?: string;               // e.g. "Paved", "Unpaved", "Gravel"
   private?: boolean;              // true = private segment, not publicly visible
+  userBestTime?: number;          // athlete's PR on this segment in seconds (from Strava detail)
 }
 
 export interface WindData {

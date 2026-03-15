@@ -15,7 +15,7 @@ import { AthletePREffort, PredictionResult, ScoredSegment } from '@/types';
 const SIGMA = 0.25;
 const RIGHT_TURN_PENALTY_SECS = 3.5;
 /** Minimum deflection angle (degrees) for a turn to count as a right-hand turn. */
-const RIGHT_TURN_MIN_DEG = 45;
+const RIGHT_TURN_MIN_DEG = 80;
 const MIN_WEIGHT = 0.05;
 const MIN_TOTAL_WEIGHT = 0.10;
 const GRADE_MIN = -5;

@@ -106,7 +106,7 @@ export function scoreSegments(
     const dlat = (seg.end_latlng[0] - seg.start_latlng[0]) * 111000;
     const dlng = (seg.end_latlng[1] - seg.start_latlng[1]) * 111000 *
       Math.cos(((seg.start_latlng[0] + seg.end_latlng[0]) / 2) * (Math.PI / 180));
-    const isLooped = Math.sqrt(dlat * dlat + dlng * dlng) < 50;
+    const isLooped = Math.sqrt(dlat * dlat + dlng * dlng) < 200;
 
     // For looped segments derive bearing from the first few polyline points so
     // the arrow icon shows the actual travel direction instead of defaulting to 0°.

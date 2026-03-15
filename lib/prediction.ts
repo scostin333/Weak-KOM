@@ -13,10 +13,10 @@ import { AthletePREffort, PredictionResult, ScoredSegment } from '@/types';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SIGMA = 0.25;
-const RIGHT_TURN_PENALTY_SECS = 3.5;
+const RIGHT_TURN_PENALTY_SECS = 4;
 /** Minimum deflection angle (degrees) for a turn to count as a right-hand turn. */
 const RIGHT_TURN_MIN_DEG = 45;
-const UTURN_PENALTY_SECS = 10;
+const UTURN_PENALTY_SECS = 15;
 /** Cumulative deflection (degrees) within the window to qualify as a U-turn. */
 const UTURN_MIN_DEG = 150;
 /** Maximum path distance (metres) over which cumulative angle is measured. */

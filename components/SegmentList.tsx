@@ -160,29 +160,25 @@ function PredictionPanel({ p, komTime, tailwindComponent, distance, speedUnit }:
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
             Predicted time
           </p>
-          <p className="text-base font-bold text-white leading-tight">
+          <p className="text-base font-bold text-white leading-tight whitespace-nowrap">
             {formatTime(p.predictedTime)}
             <span className="text-xs font-normal text-gray-400 ml-1.5">
               {formatSpeed(distance, p.predictedTime, speedUnit)}
             </span>
           </p>
           {tailwindTime !== null && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-green-400 text-xs">↑ tailwind</span>
-              <span className="text-sm font-bold text-green-300">
-                {formatTime(tailwindTime)}
-              </span>
-              <span className="text-xs text-green-600">
-                {formatSpeed(distance, tailwindTime, speedUnit)}
-              </span>
+            <p className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+              <span className="text-green-400 text-xs font-medium">↑ tailwind&nbsp;</span>
+              <span className="font-bold text-green-300">{formatTime(tailwindTime)}</span>
+              <span className="text-xs text-green-600 ml-1">{formatSpeed(distance, tailwindTime, speedUnit)}</span>
               {tailwindGap !== null && (
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 ml-1">
                   ({tailwindGap <= 0
                     ? `KOM by ${formatTime(Math.abs(tailwindGap))}`
                     : `+${formatTime(tailwindGap)} vs KOM`})
                 </span>
               )}
-            </div>
+            </p>
           )}
         </div>
         <ConfidenceRing value={p.confidence} />

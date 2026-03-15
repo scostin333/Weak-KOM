@@ -310,9 +310,9 @@ export default function MapView({
         `<b style="font-size:13px">${seg.name}</b><br>` +
         `<span style="color:${seg.color};font-weight:600">Score: ${seg.opportunityScore}/100</span>` +
         `<div style="margin:6px 0;padding:6px 8px;background:#f0fdf4;border-left:3px solid ${seg.color};border-radius:3px">` +
-        (speedMph
-          ? `<span style="font-size:18px;font-weight:700;color:#111">${speedMph}</span>` +
-            `<span style="font-size:11px;color:#555"> mph avg speed</span>`
+        (komSpeedVal
+          ? `<span style="font-size:18px;font-weight:700;color:#111">${komSpeedVal}</span>` +
+            `<span style="font-size:11px;color:#555"> avg speed</span>`
           : `<span style="font-size:12px;color:#888">Speed unavailable</span>`) +
         `</div>` +
         `${crLabel}: <b>${komFmt}</b> &nbsp;·&nbsp; ${(seg.distance / 1000).toFixed(1)} km<br>` +

@@ -52,30 +52,6 @@ function confidenceColor(c: number): string {
   return '#f97316';
 }
 
-function ConfidenceRing({ value }: { value: number }) {
-  const r       = 14;
-  const circ    = 2 * Math.PI * r;
-  const filled  = circ * (value / 100);
-  const color   = confidenceColor(value);
-  return (
-    <svg width="36" height="36" viewBox="0 0 36 36" className="shrink-0">
-      <circle cx="18" cy="18" r={r} fill="none" stroke="#374151" strokeWidth="3" />
-      <circle
-        cx="18" cy="18" r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="3"
-        strokeDasharray={`${filled} ${circ - filled}`}
-        strokeLinecap="round"
-        transform="rotate(-90 18 18)"
-      />
-      <text x="18" y="22" textAnchor="middle" fontSize="9" fill={color} fontWeight="bold">
-        {value}%
-      </text>
-    </svg>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Power-balance tailwind model
 //
@@ -155,33 +131,30 @@ function PredictionPanel({ p, komTime, tailwindComponent, distance, speedUnit }:
 
   return (
     <div className="mt-2 rounded-lg border border-gray-600 bg-gray-900/50 p-2.5 space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="space-y-1">
-          <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
-            Predicted time
+      <div className="space-y-1">
+        <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
+          Predicted time
+        </p>
+        <p className="text-base font-bold text-white leading-tight whitespace-nowrap">
+          {formatTime(p.predictedTime)}
+          <span className="text-xs font-normal text-gray-400 ml-1.5">
+            {formatSpeed(distance, p.predictedTime, speedUnit)}
+          </span>
+        </p>
+        {tailwindTime !== null && (
+          <p className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
+            <span className="text-green-400 text-xs font-medium">↑ tailwind&nbsp;</span>
+            <span className="font-bold text-green-300">{formatTime(tailwindTime)}</span>
+            <span className="text-xs text-green-600 ml-1">{formatSpeed(distance, tailwindTime, speedUnit)}</span>
+            {tailwindGap !== null && (
+              <span className="text-xs text-gray-400 ml-1">
+                ({tailwindGap <= 0
+                  ? `KOM by ${formatTime(Math.abs(tailwindGap))}`
+                  : `+${formatTime(tailwindGap)} vs KOM`})
+              </span>
+            )}
           </p>
-          <p className="text-base font-bold text-white leading-tight whitespace-nowrap">
-            {formatTime(p.predictedTime)}
-            <span className="text-xs font-normal text-gray-400 ml-1.5">
-              {formatSpeed(distance, p.predictedTime, speedUnit)}
-            </span>
-          </p>
-          {tailwindTime !== null && (
-            <p className="text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-              <span className="text-green-400 text-xs font-medium">↑ tailwind&nbsp;</span>
-              <span className="font-bold text-green-300">{formatTime(tailwindTime)}</span>
-              <span className="text-xs text-green-600 ml-1">{formatSpeed(distance, tailwindTime, speedUnit)}</span>
-              {tailwindGap !== null && (
-                <span className="text-xs text-gray-400 ml-1">
-                  ({tailwindGap <= 0
-                    ? `KOM by ${formatTime(Math.abs(tailwindGap))}`
-                    : `+${formatTime(tailwindGap)} vs KOM`})
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-        <ConfidenceRing value={p.confidence} />
+        )}
       </div>
 
       <div className={`flex items-center gap-1.5 text-xs font-medium

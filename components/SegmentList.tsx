@@ -1,12 +1,22 @@
 'use client';
 import { ScoredSegment, PredictionResult } from '@/types';
 
+type SpeedUnit = 'mph' | 'kph';
+
 interface Props {
   segments: ScoredSegment[];
   selected: number | null;
   onSelect: (id: number) => void;
   showPredictions?: boolean;
   crLabel?: string;
+  speedUnit?: SpeedUnit;
+}
+
+function formatSpeed(distanceM: number, timeSecs: number, unit: SpeedUnit): string {
+  if (timeSecs <= 0 || distanceM <= 0) return '';
+  const ms = distanceM / timeSecs;
+  const val = unit === 'mph' ? ms * 2.237 : ms * 3.6;
+  return `${val.toFixed(1)} ${unit}`;
 }
 
 function WindBadge({ component }: { component: number }) {
@@ -115,11 +125,12 @@ function tailwindSpeed(baseMs: number, tailwindMs: number): number {
   return Math.max(v, baseMs);
 }
 
-function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
+function PredictionPanel({ p, komTime, tailwindComponent, distance, speedUnit }: {
   p: PredictionResult;
   komTime: number;
   tailwindComponent: number;
   distance: number;
+  speedUnit: SpeedUnit;
 }) {
   const gapSign  = p.gapToKom >= 0 ? '+' : '';
   const canKom   = p.gapToKom <= 0;
@@ -148,12 +159,18 @@ function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
           </p>
           <p className="text-base font-bold text-white leading-tight">
             {formatTime(p.predictedTime)}
+            <span className="text-xs font-normal text-gray-400 ml-1.5">
+              {formatSpeed(distance, p.predictedTime, speedUnit)}
+            </span>
           </p>
           {tailwindTime !== null && (
             <div className="flex items-center gap-1.5">
               <span className="text-green-400 text-xs">↑ tailwind</span>
               <span className="text-sm font-bold text-green-300">
                 {formatTime(tailwindTime)}
+              </span>
+              <span className="text-xs text-green-600">
+                {formatSpeed(distance, tailwindTime, speedUnit)}
               </span>
               {tailwindGap !== null && (
                 <span className="text-xs text-gray-400">
@@ -197,7 +214,7 @@ function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
   );
 }
 
-export default function SegmentList({ segments, selected, onSelect, showPredictions, crLabel = 'KOM' }: Props) {
+export default function SegmentList({ segments, selected, onSelect, showPredictions, crLabel = 'KOM', speedUnit = 'mph' }: Props) {
   if (!segments.length) {
     return (
       <div className="text-gray-400 text-sm p-4 text-center">
@@ -211,8 +228,8 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
       {segments.map((seg) => {
         const d        = seg.komWeaknessDetail;
         const sel      = selected === seg.id;
-        const speedMph = seg.kom_time > 0 && seg.distance > 0
-          ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1)
+        const komSpeed = seg.kom_time > 0 && seg.distance > 0
+          ? formatSpeed(seg.distance, seg.kom_time, speedUnit)
           : null;
         return (
           <div
@@ -243,7 +260,7 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
             <div className="flex items-center gap-2 mt-1 text-xs flex-wrap">
               {seg.kom_time > 0
                 ? <span className="text-gray-300">
-                    {crLabel} {formatTime(seg.kom_time)}{speedMph ? ` · ${speedMph} mph` : ''}
+                    {crLabel} {formatTime(seg.kom_time)}{komSpeed ? ` · ${komSpeed}` : ''}
                   </span>
                 : <span className="text-gray-500">{crLabel} —</span>
               }
@@ -271,6 +288,7 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                     komTime={seg.kom_time}
                     tailwindComponent={seg.tailwindComponent}
                     distance={seg.distance}
+                    speedUnit={speedUnit}
                   />
                 )}
 

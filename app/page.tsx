@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
 import InfoModal from '@/components/InfoModal';
+import PRModal from '@/components/PRModal';
 import ForecastPicker, { ForecastSlot } from '@/components/ForecastPicker';
 import { ScoredSegment, BBox, AthletePREffort, WindData } from '@/types';
 import { calcTailwind } from '@/lib/wind';
@@ -36,6 +37,7 @@ export default function HomePage() {
   const [error,       setError      ] = useState<string | null>(null);
   const [wind,        setWind       ] = useState<{ windspeed: number; winddirection: number } | null>(null);
   const [infoOpen,    setInfoOpen   ] = useState(false);
+  const [prModalOpen, setPrModalOpen] = useState(false);
   const [prLibrary,   setPrLibrary  ] = useState<AthletePREffort[]>([]);
   const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
   const [prCount,     setPrCount    ] = useState(0);
@@ -207,6 +209,15 @@ export default function HomePage() {
             >
               ⓘ
             </button>
+            {prStatus === 'ready' && prLibrary.length > 0 && (
+              <button
+                onClick={() => setPrModalOpen(true)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition font-medium ml-1 px-1.5 py-0.5 rounded border border-blue-700 hover:border-blue-500"
+                title="View your reference PR efforts"
+              >
+                See your PR&apos;s
+              </button>
+            )}
           </h2>
           {loading && (
             <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -388,7 +399,14 @@ export default function HomePage() {
         </button>
       </nav>
 
-      {infoOpen && <InfoModal onClose={() => setInfoOpen(false)} />}
+      {infoOpen    && <InfoModal onClose={() => setInfoOpen(false)} />}
+      {prModalOpen && (
+        <PRModal
+          prs={prLibrary}
+          speedUnit={speedUnit}
+          onClose={() => setPrModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

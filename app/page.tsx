@@ -174,6 +174,11 @@ export default function HomePage() {
     return dirs[Math.round(deg / 45) % 8];
   };
 
+  const fmtWindSpeed = (kmh: number) =>
+    speedUnit === 'mph'
+      ? `${(kmh * 0.6214).toFixed(1)} mph`
+      : `${kmh.toFixed(1)} kph`;
+
   const predictedCount = segments.filter(s => s.prediction).length;
 
   const displaySegments = useMemo<ScoredSegment[]>(() =>
@@ -301,20 +306,18 @@ export default function HomePage() {
             <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
           </svg>
           <span className="text-base md:text-lg font-bold text-white">Weak KOM</span>
-          {(forecastWind ?? wind) && (() => {
-            const w = forecastWind ?? wind!;
-            const spd = speedUnit === 'mph'
-              ? `${(w.windspeed * 0.6214).toFixed(1)} mph`
-              : `${w.windspeed} kph`;
-            return (
-              <span className="text-xs text-gray-400 hidden sm:block">
-                {forecastWind
-                  ? <><span className="text-orange-400 font-medium">Forecast</span>{': '}{spd} {windDirLabel(w.winddirection)}</>
-                  : <>Wind: {spd} {windDirLabel(w.winddirection)}</>
-                }
-              </span>
-            );
-          })()}
+          {(forecastWind ?? wind) && (
+            <span className="text-xs text-gray-400 hidden sm:block">
+              {forecastWind ? (
+                <>
+                  <span className="text-orange-400 font-medium">Forecast</span>
+                  {': '}{fmtWindSpeed(forecastWind.windspeed)} {windDirLabel(forecastWind.winddirection)}
+                </>
+              ) : (
+                <>Wind: {fmtWindSpeed(wind!.windspeed)} {windDirLabel(wind!.winddirection)}</>
+              )}
+            </span>
+          )}
 
           {accessToken && (
             <span className={`

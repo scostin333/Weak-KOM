@@ -16,6 +16,11 @@ const SIGMA = 0.25;
 const RIGHT_TURN_PENALTY_SECS = 3.5;
 /** Minimum deflection angle (degrees) for a turn to count as a right-hand turn. */
 const RIGHT_TURN_MIN_DEG = 45;
+const UTURN_PENALTY_SECS = 10;
+/** Cumulative deflection (degrees) within the window to qualify as a U-turn. */
+const UTURN_MIN_DEG = 150;
+/** Maximum path distance (metres) over which cumulative angle is measured. */
+const UTURN_WINDOW_M = 75;
 const MIN_WEIGHT = 0.05;
 const MIN_TOTAL_WEIGHT = 0.10;
 const GRADE_MIN = -5;
@@ -134,6 +139,76 @@ function countRightHandTurns(polyline: [number, number][]): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// U-turn detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Flat-earth distance in metres between two [lat, lng] points. */
+function approxDistM(p1: [number, number], p2: [number, number]): number {
+  const dlat = (p2[0] - p1[0]) * 111000;
+  const dlng = (p2[1] - p1[1]) * 111000 *
+    Math.cos(((p1[0] + p2[0]) / 2) * (Math.PI / 180));
+  return Math.sqrt(dlat * dlat + dlng * dlng);
+}
+
+/** Absolute deflection angle in degrees at point p1 (regardless of direction). */
+function absTurnDeg(
+  p0: [number, number],
+  p1: [number, number],
+  p2: [number, number],
+): number {
+  const dx1 = p1[1] - p0[1], dy1 = p1[0] - p0[0];
+  const dx2 = p2[1] - p1[1], dy2 = p2[0] - p1[0];
+  const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+  const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+  if (len1 < 1e-9 || len2 < 1e-9) return 0;
+  const cross = Math.abs(dx1 * dy2 - dy1 * dx2);
+  const dot   = dx1 * dx2 + dy1 * dy2;
+  return Math.atan2(cross, dot) * (180 / Math.PI);
+}
+
+/**
+ * Counts the number of U-turns in a polyline.
+ * A U-turn is defined as a cumulative heading change >= UTURN_MIN_DEG
+ * (either direction) occurring within UTURN_WINDOW_M metres of path.
+ * Once a U-turn is detected, the scan resumes after its end point to
+ * avoid double-counting.
+ */
+function countUTurns(polyline: [number, number][]): number {
+  if (polyline.length < 3) return 0;
+  let count = 0;
+  let i = 0;
+
+  while (i < polyline.length - 1) {
+    let pathDist   = 0;
+    let cumulAngle = 0;
+    let uTurnEnd   = -1;
+
+    for (let j = i + 1; j < polyline.length; j++) {
+      pathDist += approxDistM(polyline[j - 1], polyline[j]);
+      if (pathDist > UTURN_WINDOW_M) break;
+
+      if (j < polyline.length - 1) {
+        cumulAngle += absTurnDeg(polyline[j - 1], polyline[j], polyline[j + 1]);
+      }
+
+      if (cumulAngle >= UTURN_MIN_DEG) {
+        uTurnEnd = j;
+        break;
+      }
+    }
+
+    if (uTurnEnd >= 0) {
+      count++;
+      i = uTurnEnd + 1; // skip past this U-turn
+    } else {
+      i++;
+    }
+  }
+
+  return count;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -173,7 +248,12 @@ export function predictSegmentTime(
 
   const predictedPace = activePaces.reduce((s, p, i) => s + p * activeWeights[i], 0) / totalWeight;
   const rightTurns    = target.polyline ? countRightHandTurns(target.polyline) : 0;
-  const predictedTime = Math.round(target.distance / predictedPace + rightTurns * RIGHT_TURN_PENALTY_SECS);
+  const uTurns        = target.polyline ? countUTurns(target.polyline) : 0;
+  const predictedTime = Math.round(
+    target.distance / predictedPace +
+    rightTurns * RIGHT_TURN_PENALTY_SECS +
+    uTurns     * UTURN_PENALTY_SECS,
+  );
   const gapToKom      = predictedTime - target.kom_time;
 
   const confidence = calcConfidence(activePaces, activeWeights, totalWeight, activePaces.length);

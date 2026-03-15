@@ -63,6 +63,58 @@ function ConfidenceRing({ value }: { value: number }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Power-balance tailwind model
+//
+// At the athlete's predicted pace the total resistive power equals:
+//   P = F_aero(v, v_wind) · v  +  F_roll · v  +  F_mech · v
+//
+// A tailwind reduces only the aero term. Rolling resistance and mechanical
+// drag are unaffected, so the speed gain is always less than the raw wind
+// speed — unlike the naive linear addition.
+//
+// Constants to adjust if real-world results don't match:
+//   CDA      — the PRIMARY tuning dial. Drag coefficient × frontal area (m²).
+//              Lower CDA (more aero) → larger speed gain from tailwind.
+//              Higher CDA (upright) → smaller gain.
+//   CRR      — rolling resistance coefficient. Higher = more tyre/surface drag,
+//              less relative benefit from wind.
+//   C_MECH   — mechanical loss coefficient (drivetrain friction). Treated as an
+//              additional constant force = C_MECH · MASS · G.
+//   MASS_KG  — combined rider + bike mass. Affects rolling & mechanical terms.
+// ─────────────────────────────────────────────────────────────────────────────
+const CDA     = 0.30;   // m²  — road cyclist on hoods; drop to ~0.22 for full aero tuck
+const RHO     = 1.225;  // kg/m³ — air density at sea level, 15 °C
+const CRR     = 0.004;  // rolling resistance coefficient (road tyre on tarmac)
+const C_MECH  = 0.0025; // mechanical drag coefficient (≈ 2–3 % drivetrain loss as force)
+const MASS_KG = 80;     // kg — rider (75 kg) + bike (5 kg)
+const G       = 9.81;   // m/s²
+
+/**
+ * Returns the equilibrium speed (m/s) a cyclist achieves with a tailwind,
+ * given their base (no-wind) speed. Uses Newton's method to solve the
+ * power-balance cubic for the new speed at the same power output.
+ */
+function tailwindSpeed(baseMs: number, tailwindMs: number): number {
+  const rollMech = (CRR + C_MECH) * MASS_KG * G;
+  // Total power at base speed (zero wind)
+  const P = (0.5 * CDA * RHO * baseMs * baseMs + rollMech) * baseMs;
+
+  // Solve f(v) = (0.5·CDA·RHO·(v - v_w)² + rollMech)·v − P = 0
+  let v = baseMs + tailwindMs * 0.3; // conservative initial guess
+  for (let i = 0; i < 15; i++) {
+    const rel  = v - tailwindMs;
+    const aero = 0.5 * CDA * RHO * rel * rel;
+    const fv   = (aero + rollMech) * v - P;
+    const dfv  = (aero + rollMech) + v * (CDA * RHO * rel); // df/dv
+    if (Math.abs(dfv) < 1e-12) break;
+    const step = fv / dfv;
+    v -= step;
+    if (Math.abs(step) < 1e-7) break;
+  }
+  return Math.max(v, baseMs);
+}
+
 function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
   p: PredictionResult;
   komTime: number;
@@ -73,14 +125,14 @@ function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
   const canKom   = p.gapToKom <= 0;
   const absGap   = Math.abs(p.gapToKom);
 
-  // Tailwind-adjusted prediction: boost pace by the tailwind component (km/h → m/s)
-  // and preserve the same turn penalties already baked into predictedTime.
-  const tailwindMs      = tailwindComponent > 2 ? tailwindComponent / 3.6 : 0;
-  const turnPenalties   = p.predictedTime - Math.round(distance / p.basePaceMs);
-  const tailwindTime    = tailwindMs > 0
-    ? Math.round(distance / (p.basePaceMs + tailwindMs) + turnPenalties)
+  // Recover turn penalties baked into predictedTime, then compute tailwind time
+  // using the physics-based speed model above.
+  const tailwindMs    = tailwindComponent > 2 ? tailwindComponent / 3.6 : 0;
+  const turnPenalties = p.predictedTime - Math.round(distance / p.basePaceMs);
+  const tailwindTime  = tailwindMs > 0
+    ? Math.round(distance / tailwindSpeed(p.basePaceMs, tailwindMs) + turnPenalties)
     : null;
-  const tailwindGap     = tailwindTime !== null ? tailwindTime - komTime : null;
+  const tailwindGap   = tailwindTime !== null ? tailwindTime - komTime : null;
 
   const confLabel =
     p.confidence >= 70 ? 'High confidence'   :

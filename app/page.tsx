@@ -41,7 +41,6 @@ export default function HomePage() {
   const [prCount,     setPrCount    ] = useState(0);
   const [mobileTab,   setMobileTab  ] = useState<'map' | 'list'>('map');
   const [windWeight,      setWindWeight     ] = useState(1.0);
-  const [nameFilter,      setNameFilter     ] = useState('');
   const [forecastSlot,    setForecastSlot   ] = useState<ForecastSlot | null>(null);
   const [forecastWind,    setForecastWind   ] = useState<WindData | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
@@ -140,7 +139,6 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     setSegments([]);
-    setNameFilter('');
     setBboxCenter({ lat: (bbox.minLat + bbox.maxLat) / 2, lng: (bbox.minLng + bbox.maxLng) / 2 });
     setForecastSlot(null);
     setForecastWind(null);
@@ -173,12 +171,6 @@ export default function HomePage() {
     return dirs[Math.round(deg / 45) % 8];
   };
 
-  const filteredSegments = useMemo(() => {
-    if (!nameFilter.trim()) return displaySegments;
-    const q = nameFilter.trim().toLowerCase();
-    return displaySegments.filter(s => s.name.toLowerCase().includes(q));
-  }, [displaySegments, nameFilter]);
-
   const predictedCount = segments.filter(s => s.prediction).length;
 
   const displaySegments = useMemo<ScoredSegment[]>(() =>
@@ -201,9 +193,7 @@ export default function HomePage() {
           <h2 className="text-sm font-semibold text-gray-200 flex items-center gap-1.5">
             Segments
             {segments.length > 0 && (
-              <span className="text-gray-400">
-                ({nameFilter ? `${filteredSegments.length}/` : ''}{segments.length})
-              </span>
+              <span className="text-gray-400">({segments.length})</span>
             )}
             {predictedCount > 0 && (
               <span className="text-blue-400 text-xs">· {predictedCount} predicted</span>
@@ -257,27 +247,6 @@ export default function HomePage() {
         </div>
 
         {segments.length > 0 && (
-          <div className="relative">
-            <input
-              type="text"
-              value={nameFilter}
-              onChange={e => setNameFilter(e.target.value)}
-              placeholder="Search segments…"
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-orange-500"
-            />
-            {nameFilter && (
-              <button
-                onClick={() => setNameFilter('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-sm leading-none"
-                aria-label="Clear search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        )}
-
-        {segments.length > 0 && (
           <div className="border-t border-gray-700 pt-2">
             <ForecastPicker
               value={forecastSlot}
@@ -301,7 +270,7 @@ export default function HomePage() {
       )}
 
       <SegmentList
-        segments={filteredSegments}
+        segments={displaySegments}
         selected={selected}
         onSelect={setSelected}
         showPredictions={prStatus === 'ready'}

@@ -255,15 +255,12 @@ export function predictSegmentTime(
   const totalWeight = activeWeights.reduce((s, w) => s + w, 0);
   if (totalWeight < MIN_TOTAL_WEIGHT) return null;
 
-  const predictedPace = activePaces.reduce((s, p, i) => s + p * activeWeights[i], 0) / totalWeight;
-  const rightTurns    = target.polyline ? countRightHandTurns(target.polyline) : 0;
-  const uTurns        = target.polyline ? countUTurns(target.polyline) : 0;
-  const predictedTime = Math.round(
-    target.distance / predictedPace +
-    rightTurns * RIGHT_TURN_PENALTY_SECS +
-    uTurns     * UTURN_PENALTY_SECS,
-  );
-  const gapToKom      = predictedTime - target.kom_time;
+  const predictedPace  = activePaces.reduce((s, p, i) => s + p * activeWeights[i], 0) / totalWeight;
+  const rightTurns     = target.polyline ? countRightHandTurns(target.polyline) : 0;
+  const uTurns         = target.polyline ? countUTurns(target.polyline) : 0;
+  const turnPenalties  = rightTurns * RIGHT_TURN_PENALTY_SECS + uTurns * UTURN_PENALTY_SECS;
+  const predictedTime  = Math.round(target.distance / predictedPace + turnPenalties);
+  const gapToKom       = predictedTime - target.kom_time;
 
   const confidence = calcConfidence(activePaces, activeWeights, totalWeight, activePaces.length);
 
@@ -272,6 +269,7 @@ export function predictSegmentTime(
 
   return {
     predictedTime,
+    basePaceMs: predictedPace,
     confidence,
     gapToKom,
     referenceCount: activePaces.length,

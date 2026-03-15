@@ -63,10 +63,24 @@ function ConfidenceRing({ value }: { value: number }) {
   );
 }
 
-function PredictionPanel({ p, komTime }: { p: PredictionResult; komTime: number }) {
+function PredictionPanel({ p, komTime, tailwindComponent, distance }: {
+  p: PredictionResult;
+  komTime: number;
+  tailwindComponent: number;
+  distance: number;
+}) {
   const gapSign  = p.gapToKom >= 0 ? '+' : '';
   const canKom   = p.gapToKom <= 0;
   const absGap   = Math.abs(p.gapToKom);
+
+  // Tailwind-adjusted prediction: boost pace by the tailwind component (km/h → m/s)
+  // and preserve the same turn penalties already baked into predictedTime.
+  const tailwindMs      = tailwindComponent > 2 ? tailwindComponent / 3.6 : 0;
+  const turnPenalties   = p.predictedTime - Math.round(distance / p.basePaceMs);
+  const tailwindTime    = tailwindMs > 0
+    ? Math.round(distance / (p.basePaceMs + tailwindMs) + turnPenalties)
+    : null;
+  const tailwindGap     = tailwindTime !== null ? tailwindTime - komTime : null;
 
   const confLabel =
     p.confidence >= 70 ? 'High confidence'   :
@@ -76,13 +90,28 @@ function PredictionPanel({ p, komTime }: { p: PredictionResult; komTime: number 
   return (
     <div className="mt-2 rounded-lg border border-gray-600 bg-gray-900/50 p-2.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <div>
+        <div className="space-y-1">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">
             Predicted time
           </p>
           <p className="text-base font-bold text-white leading-tight">
             {formatTime(p.predictedTime)}
           </p>
+          {tailwindTime !== null && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-green-400 text-xs">↑ tailwind</span>
+              <span className="text-sm font-bold text-green-300">
+                {formatTime(tailwindTime)}
+              </span>
+              {tailwindGap !== null && (
+                <span className="text-xs text-gray-400">
+                  ({tailwindGap <= 0
+                    ? `KOM by ${formatTime(Math.abs(tailwindGap))}`
+                    : `+${formatTime(tailwindGap)} vs KOM`})
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <ConfidenceRing value={p.confidence} />
       </div>
@@ -185,7 +214,12 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                 )}
 
                 {showPredictions && seg.prediction && (
-                  <PredictionPanel p={seg.prediction} komTime={seg.kom_time} />
+                  <PredictionPanel
+                    p={seg.prediction}
+                    komTime={seg.kom_time}
+                    tailwindComponent={seg.tailwindComponent}
+                    distance={seg.distance}
+                  />
                 )}
 
                 {!showPredictions && (

@@ -55,6 +55,9 @@ export interface AthletePREffort {
 export interface PredictionResult {
   /** Predicted time in seconds. */
   predictedTime: number;
+  /** Predicted pace in m/s (grade- and distance-adjusted, before turn penalties).
+   *  Used client-side to derive a tailwind-adjusted prediction. */
+  basePaceMs: number;
   /**
    * Confidence 0–100.
    * Driven by how many similar PRs were found and how close they are in the

@@ -1,11 +1,12 @@
 'use client';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
 import InfoModal from '@/components/InfoModal';
-import { ScoredSegment, BBox, AthletePREffort } from '@/types';
-import { useEffect } from 'react';
+import ForecastPicker, { ForecastSlot } from '@/components/ForecastPicker';
+import { ScoredSegment, BBox, AthletePREffort, WindData } from '@/types';
+import { calcTailwind } from '@/lib/wind';
 
 function scoreColor(score: number): string {
   if (score >= 75) return '#22c55e';
@@ -39,7 +40,11 @@ export default function HomePage() {
   const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
   const [prCount,     setPrCount    ] = useState(0);
   const [mobileTab,   setMobileTab  ] = useState<'map' | 'list'>('map');
-  const [windWeight,  setWindWeight ] = useState(1.0);
+  const [windWeight,      setWindWeight     ] = useState(1.0);
+  const [forecastSlot,    setForecastSlot   ] = useState<ForecastSlot | null>(null);
+  const [forecastWind,    setForecastWind   ] = useState<WindData | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const [bboxCenter,      setBboxCenter     ] = useState<{ lat: number; lng: number } | null>(null);
 
   // ── OAuth token ingestion from URL ───────────────────────────────────────
   useEffect(() => {
@@ -84,6 +89,38 @@ export default function HomePage() {
       });
   }, [accessToken]);
 
+  // ── Fetch forecast wind whenever slot or bbox changes ────────────────────
+  useEffect(() => {
+    if (!forecastSlot || !bboxCenter) {
+      setForecastWind(null);
+      return;
+    }
+
+    const PERIOD_HOURS: Record<ForecastSlot['period'], number> = {
+      morning: 7, midday: 12, afternoon: 17,
+    };
+
+    const d = new Date();
+    d.setDate(d.getDate() + forecastSlot.dayOffset);
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    const hh   = String(PERIOD_HOURS[forecastSlot.period]).padStart(2, '0');
+    const datetime = `${yyyy}-${mm}-${dd}T${hh}:00`;
+
+    setForecastLoading(true);
+    fetch(
+      `/api/wind-forecast?lat=${bboxCenter.lat.toFixed(4)}&lng=${bboxCenter.lng.toFixed(4)}&datetime=${encodeURIComponent(datetime)}`
+    )
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setForecastWind({ windspeed: data.windspeed, winddirection: data.winddirection });
+      })
+      .catch(e => console.warn('[forecast wind]', e))
+      .finally(() => setForecastLoading(false));
+  }, [forecastSlot, bboxCenter]);
+
   const handleLogin  = () => { window.location.href = '/api/auth/login'; };
   const handleLogout = () => {
     setAccessToken(null);
@@ -102,6 +139,9 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     setSegments([]);
+    setBboxCenter({ lat: (bbox.minLat + bbox.maxLat) / 2, lng: (bbox.minLng + bbox.maxLng) / 2 });
+    setForecastSlot(null);
+    setForecastWind(null);
 
     try {
       const res = await fetch('/api/segments', {
@@ -135,11 +175,14 @@ export default function HomePage() {
 
   const displaySegments = useMemo<ScoredSegment[]>(() =>
     segments.map(seg => {
-      const windBonus = Math.round((seg.tailwindComponent / 40) * 30 * windWeight);
+      const tailwindComponent = (forecastWind && !seg.isLooped)
+        ? calcTailwind(seg.bearing, forecastWind.winddirection, forecastWind.windspeed)
+        : seg.tailwindComponent;
+      const windBonus = Math.round((tailwindComponent / 40) * 30 * windWeight);
       const opportunityScore = Math.min(100, Math.max(0, seg.komWeaknessScore + windBonus));
-      return { ...seg, opportunityScore, color: scoreColor(opportunityScore) };
+      return { ...seg, tailwindComponent, opportunityScore, color: scoreColor(opportunityScore) };
     }),
-    [segments, windWeight],
+    [segments, windWeight, forecastWind],
   );
 
   // ── Sidebar panel (shared by desktop aside + mobile overlay) ─────────────
@@ -203,6 +246,16 @@ export default function HomePage() {
           </span>
         </div>
 
+        {segments.length > 0 && (
+          <div className="border-t border-gray-700 pt-2">
+            <ForecastPicker
+              value={forecastSlot}
+              onChange={setForecastSlot}
+              loading={forecastLoading}
+            />
+          </div>
+        )}
+
         {!accessToken && (
           <p className="text-xs text-gray-500 italic">
             Connect Strava to unlock PR predictions
@@ -235,9 +288,17 @@ export default function HomePage() {
             <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
           </svg>
           <span className="text-base md:text-lg font-bold text-white">Weak KOM</span>
-          {wind && (
+          {(forecastWind ?? wind) && (
             <span className="text-xs text-gray-400 hidden sm:block">
-              Wind: {wind.windspeed} km/h {windDirLabel(wind.winddirection)}
+              {forecastWind ? (
+                <>
+                  <span className="text-orange-400 font-medium">Forecast</span>
+                  {': '}
+                  {forecastWind.windspeed} km/h {windDirLabel(forecastWind.winddirection)}
+                </>
+              ) : (
+                <>Wind: {wind!.windspeed} km/h {windDirLabel(wind!.winddirection)}</>
+              )}
             </span>
           )}
 

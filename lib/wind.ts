@@ -111,6 +111,54 @@ export function calcTailwind(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 3b. Hourly forecast fetch
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches forecasted wind speed and direction from Open-Meteo for a specific
+ * future hour. `isoDatetime` should be in the form "YYYY-MM-DDTHH:00" in the
+ * local timezone of the coordinates (Open-Meteo returns local times when
+ * timezone=auto is used).
+ */
+export async function fetchWindForecast(
+  lat: number,
+  lng: number,
+  isoDatetime: string,
+): Promise<WindData> {
+  const url = new URL('https://api.open-meteo.com/v1/forecast');
+  url.searchParams.set('latitude',      lat.toFixed(4));
+  url.searchParams.set('longitude',     lng.toFixed(4));
+  url.searchParams.set('hourly',        'windspeed_10m,winddirection_10m');
+  url.searchParams.set('windspeed_unit','kmh');
+  url.searchParams.set('timezone',      'auto');
+  url.searchParams.set('forecast_days', '4');
+
+  const res = await fetch(url.toString(), { next: { revalidate: 1800 } });
+
+  if (!res.ok) {
+    throw new Error(
+      `Open-Meteo forecast error ${res.status} for (${lat.toFixed(4)}, ${lng.toFixed(4)})`
+    );
+  }
+
+  const data = await res.json();
+  const times:  string[] = data?.hourly?.time;
+  const speeds: number[] = data?.hourly?.windspeed_10m;
+  const dirs:   number[] = data?.hourly?.winddirection_10m;
+
+  if (!times || !speeds || !dirs) {
+    throw new Error('Unexpected Open-Meteo forecast response shape');
+  }
+
+  const idx = times.findIndex(t => t === isoDatetime);
+  if (idx === -1) {
+    throw new Error(`Forecast hour ${isoDatetime} not found in response`);
+  }
+
+  return { windspeed: speeds[idx], winddirection: dirs[idx] };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 4.  Combined entry-point
 // ─────────────────────────────────────────────────────────────────────────────
 

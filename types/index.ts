@@ -71,6 +71,7 @@ export interface PredictionResult {
 
 export interface ScoredSegment extends StravaSegment {
   bearing: number;
+  isLooped: boolean;               // true if start/finish are within 200 m
   tailwindComponent: number;       // +ve = tailwind, -ve = headwind km/h
   komWeaknessScore: number;        // 0–100 combined weakness
   komWeaknessDetail: WeaknessBreakdown;

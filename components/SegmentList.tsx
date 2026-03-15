@@ -263,9 +263,14 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                   </span>
                 : <span className="text-gray-500">{crLabel} —</span>
               }
-              {seg.userBestTime && (
+              {seg.userBestTime && seg.userTimeDelta != null && seg.userTimeDelta <= 0 && (
+                <span className="text-yellow-300 font-semibold">
+                  👑 You hold the {crLabel}
+                </span>
+              )}
+              {seg.userBestTime && seg.userTimeDelta != null && seg.userTimeDelta > 0 && (
                 <span className="text-blue-400">
-                  PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta ?? 0)})
+                  PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta)})
                 </span>
               )}
               <WindBadge component={seg.tailwindComponent} speedUnit={speedUnit} />

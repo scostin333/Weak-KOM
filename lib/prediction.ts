@@ -14,8 +14,10 @@ import { AthletePREffort, PredictionResult, ScoredSegment } from '@/types';
 
 const SIGMA = 0.25;
 const RIGHT_TURN_PENALTY_SECS = 4;
-/** Minimum deflection angle (degrees) for a turn to count as a right-hand turn. */
+const LEFT_TURN_PENALTY_SECS  = 4;
+/** Minimum deflection angle (degrees) for a turn to count as a significant turn. */
 const RIGHT_TURN_MIN_DEG = 45;
+const LEFT_TURN_MIN_DEG  = 90;
 const UTURN_PENALTY_SECS = 15;
 /** Cumulative deflection (degrees) within the window to qualify as a U-turn. */
 const UTURN_MIN_DEG = 150;
@@ -116,6 +118,34 @@ function calcConfidence(
  * a standard right-handed Cartesian system so a clockwise (right) turn
  * produces a negative cross-product.
  */
+function countLeftHandTurns(polyline: [number, number][]): number {
+  if (polyline.length < 3) return 0;
+  const minRad = (LEFT_TURN_MIN_DEG * Math.PI) / 180;
+  let count = 0;
+
+  for (let i = 1; i < polyline.length - 1; i++) {
+    const [lat0, lng0] = polyline[i - 1];
+    const [lat1, lng1] = polyline[i];
+    const [lat2, lng2] = polyline[i + 1];
+
+    const dx1 = lng1 - lng0, dy1 = lat1 - lat0;
+    const dx2 = lng2 - lng1, dy2 = lat2 - lat1;
+
+    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if (len1 < 1e-9 || len2 < 1e-9) continue;
+
+    // cross > 0 → counter-clockwise → left turn
+    const cross = dx1 * dy2 - dy1 * dx2;
+    const dot   = dx1 * dx2 + dy1 * dy2;
+    const angle = Math.atan2(Math.abs(cross), dot);
+
+    if (cross > 0 && angle >= minRad) count++;
+  }
+
+  return count;
+}
+
 function countRightHandTurns(polyline: [number, number][]): number {
   if (polyline.length < 3) return 0;
   const minRad = (RIGHT_TURN_MIN_DEG * Math.PI) / 180;
@@ -257,8 +287,9 @@ export function predictSegmentTime(
 
   const predictedPace  = activePaces.reduce((s, p, i) => s + p * activeWeights[i], 0) / totalWeight;
   const rightTurns     = target.polyline ? countRightHandTurns(target.polyline) : 0;
+  const leftTurns      = target.polyline ? countLeftHandTurns(target.polyline) : 0;
   const uTurns         = target.polyline ? countUTurns(target.polyline) : 0;
-  const turnPenalties  = rightTurns * RIGHT_TURN_PENALTY_SECS + uTurns * UTURN_PENALTY_SECS;
+  const turnPenalties  = rightTurns * RIGHT_TURN_PENALTY_SECS + leftTurns * LEFT_TURN_PENALTY_SECS + uTurns * UTURN_PENALTY_SECS;
   const predictedTime  = Math.round(target.distance / predictedPace + turnPenalties);
   const gapToKom       = predictedTime - target.kom_time;
 

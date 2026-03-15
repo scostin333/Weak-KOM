@@ -71,6 +71,7 @@ interface Props {
   onBBoxDrawn: (bbox: BBox) => void;
   loading?: boolean;
   crLabel?: string;
+  speedUnit?: 'mph' | 'kph';
 }
 
 const LEAFLET_VERSION = '1.9.4';
@@ -134,6 +135,7 @@ export default function MapView({
   onBBoxDrawn,
   loading = false,
   crLabel = 'KOM',
+  speedUnit = 'mph',
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -282,21 +284,27 @@ export default function MapView({
       const komFmt = seg.kom_time > 0
         ? `${Math.floor(seg.kom_time / 60)}:${String(seg.kom_time % 60).padStart(2, '0')}`
         : '—';
-      const speedMph = seg.kom_time > 0 && seg.distance > 0
-        ? ((seg.distance / 1609.34) / (seg.kom_time / 3600)).toFixed(1)
+      const komSpeedVal = seg.kom_time > 0 && seg.distance > 0
+        ? speedUnit === 'mph'
+          ? `${((seg.distance / MILE_M) / (seg.kom_time / 3600)).toFixed(1)} mph`
+          : `${((seg.distance / seg.kom_time) * 3.6).toFixed(1)} kph`
         : null;
+      const windAbs    = Math.abs(seg.tailwindComponent);
+      const windSpd    = speedUnit === 'mph'
+        ? `${(windAbs * 0.6214).toFixed(1)} mph`
+        : `${windAbs.toFixed(1)} kph`;
+      const windDir    = seg.tailwindComponent > 2 ? '↑ tailwind' : seg.tailwindComponent < -2 ? '↓ headwind' : '→ cross';
       const tooltip =
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.5">` +
         `<b>${seg.name}</b><br>` +
         `Score: <b style="color:${seg.color}">${seg.opportunityScore}/100</b><br>` +
-        `${crLabel}: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${speedMph ? ` · ${speedMph} mph` : ''}<br>` +
-        `Wind: ${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ` +
-        `${Math.abs(seg.tailwindComponent).toFixed(1)} km/h` +
+        `${crLabel}: ${komFmt} · ${(seg.distance / 1000).toFixed(1)} km${komSpeedVal ? ` · ${komSpeedVal}` : ''}<br>` +
+        `Wind: ${windDir} ${windSpd}` +
         (seg.surface ? `<br>Surface: ${seg.surface}` : '') +
         `</div>`;
 
       const gradeStr = `${seg.average_grade > 0 ? '+' : ''}${seg.average_grade.toFixed(1)}%`;
-      const windStr  = `${seg.tailwindComponent > 0 ? '↑ tailwind' : seg.tailwindComponent < 0 ? '↓ headwind' : '→ cross'} ${Math.abs(seg.tailwindComponent).toFixed(1)} km/h`;
+      const windStr  = `${windDir} ${windSpd}`;
       const popup =
         `<div style="font-family:sans-serif;font-size:12px;line-height:1.6;min-width:180px">` +
         `<b style="font-size:13px">${seg.name}</b><br>` +

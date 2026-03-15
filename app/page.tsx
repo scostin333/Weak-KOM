@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import SegmentList from '@/components/SegmentList';
 import LoginButton from '@/components/LoginButton';
 import InfoModal from '@/components/InfoModal';
+import PRModal from '@/components/PRModal';
 import ForecastPicker, { ForecastSlot } from '@/components/ForecastPicker';
 import { ScoredSegment, BBox, AthletePREffort, WindData } from '@/types';
 import { calcTailwind } from '@/lib/wind';
@@ -36,6 +37,7 @@ export default function HomePage() {
   const [error,       setError      ] = useState<string | null>(null);
   const [wind,        setWind       ] = useState<{ windspeed: number; winddirection: number } | null>(null);
   const [infoOpen,    setInfoOpen   ] = useState(false);
+  const [prModalOpen, setPrModalOpen] = useState(false);
   const [prLibrary,   setPrLibrary  ] = useState<AthletePREffort[]>([]);
   const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
   const [prCount,     setPrCount    ] = useState(0);
@@ -207,6 +209,15 @@ export default function HomePage() {
             >
               ⓘ
             </button>
+            {prStatus === 'ready' && prLibrary.length > 0 && (
+              <button
+                onClick={() => setPrModalOpen(true)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition font-medium ml-1 px-1.5 py-0.5 rounded border border-blue-700 hover:border-blue-500"
+                title="View your reference PR efforts"
+              >
+                See your PR&apos;s
+              </button>
+            )}
           </h2>
           {loading && (
             <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -290,19 +301,20 @@ export default function HomePage() {
             <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
           </svg>
           <span className="text-base md:text-lg font-bold text-white">Weak KOM</span>
-          {(forecastWind ?? wind) && (
-            <span className="text-xs text-gray-400 hidden sm:block">
-              {forecastWind ? (
-                <>
-                  <span className="text-orange-400 font-medium">Forecast</span>
-                  {': '}
-                  {forecastWind.windspeed} km/h {windDirLabel(forecastWind.winddirection)}
-                </>
-              ) : (
-                <>Wind: {wind!.windspeed} km/h {windDirLabel(wind!.winddirection)}</>
-              )}
-            </span>
-          )}
+          {(forecastWind ?? wind) && (() => {
+            const w = forecastWind ?? wind!;
+            const spd = speedUnit === 'mph'
+              ? `${(w.windspeed * 0.6214).toFixed(1)} mph`
+              : `${w.windspeed} kph`;
+            return (
+              <span className="text-xs text-gray-400 hidden sm:block">
+                {forecastWind
+                  ? <><span className="text-orange-400 font-medium">Forecast</span>{': '}{spd} {windDirLabel(w.winddirection)}</>
+                  : <>Wind: {spd} {windDirLabel(w.winddirection)}</>
+                }
+              </span>
+            );
+          })()}
 
           {accessToken && (
             <span className={`
@@ -355,6 +367,7 @@ export default function HomePage() {
             onBBoxDrawn={handleBBoxDrawn}
             loading={loading}
             crLabel={athlete?.sex === 'F' ? 'QOM' : 'KOM'}
+            speedUnit={speedUnit}
           />
         </main>
 
@@ -386,7 +399,14 @@ export default function HomePage() {
         </button>
       </nav>
 
-      {infoOpen && <InfoModal onClose={() => setInfoOpen(false)} />}
+      {infoOpen    && <InfoModal onClose={() => setInfoOpen(false)} />}
+      {prModalOpen && (
+        <PRModal
+          prs={prLibrary}
+          speedUnit={speedUnit}
+          onClose={() => setPrModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

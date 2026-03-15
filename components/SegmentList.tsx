@@ -19,10 +19,13 @@ function formatSpeed(distanceM: number, timeSecs: number, unit: SpeedUnit): stri
   return `${val.toFixed(1)} ${unit}`;
 }
 
-function WindBadge({ component }: { component: number }) {
+function WindBadge({ component, speedUnit }: { component: number; speedUnit: SpeedUnit }) {
   const abs = Math.abs(component);
-  if (component > 2)  return <span className="text-green-400">↑ {abs} km/h tail</span>;
-  if (component < -2) return <span className="text-red-400">↓ {abs} km/h head</span>;
+  const spd = speedUnit === 'mph'
+    ? `${(abs * 0.6214).toFixed(1)} mph`
+    : `${abs} kph`;
+  if (component > 2)  return <span className="text-green-400">↑ {spd} tail</span>;
+  if (component < -2) return <span className="text-red-400">↓ {spd} head</span>;
   return <span className="text-yellow-400">→ crosswind</span>;
 }
 
@@ -269,7 +272,7 @@ export default function SegmentList({ segments, selected, onSelect, showPredicti
                   PR {formatTime(seg.userBestTime)} (+{formatTime(seg.userTimeDelta ?? 0)})
                 </span>
               )}
-              <WindBadge component={seg.tailwindComponent} />
+              <WindBadge component={seg.tailwindComponent} speedUnit={speedUnit} />
             </div>
 
             {sel && (

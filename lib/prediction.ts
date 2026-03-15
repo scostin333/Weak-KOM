@@ -55,22 +55,28 @@ function kernelWeight(fDist: number): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Grade-adjusted pace model
+// Grade- and distance-adjusted pace model
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** Riegel fatigue exponent: pace decreases as (refDist/targetDist)^exp. */
+const RIEGEL_EXP = 0.07;
 
 export function gradeSpeedMultiplier(grade: number): number {
   const g = Math.min(20, Math.max(-5, grade)) / 100;
   return 1 / (1 + 17 * g + 55 * g * g);
 }
 
-function predictPaceForGrade(
-  refPace:   number,
-  refGrade:  number,
-  targetGrade: number,
+function predictPaceForGradeAndDistance(
+  refPace:      number,
+  refGrade:     number,
+  refDistance:  number,
+  targetGrade:  number,
+  targetDistance: number,
 ): number {
-  const refMult    = gradeSpeedMultiplier(refGrade);
-  const targetMult = gradeSpeedMultiplier(targetGrade);
-  return refPace * (targetMult / refMult);
+  const gradeAdjust = gradeSpeedMultiplier(targetGrade) / gradeSpeedMultiplier(refGrade);
+  // Riegel: sustainable pace drops as distance increases
+  const distAdjust  = Math.pow(Math.max(refDistance, 1) / Math.max(targetDistance, 1), RIEGEL_EXP);
+  return refPace * gradeAdjust * distAdjust;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,7 +242,10 @@ export function predictSegmentTime(
     const w = kernelWeight(fd);
     if (w < MIN_WEIGHT) continue;
 
-    const adjustedPace = predictPaceForGrade(ref.pace, ref.grade, target.average_grade);
+    const adjustedPace = predictPaceForGradeAndDistance(
+      ref.pace, ref.grade, ref.distance,
+      target.average_grade, target.distance,
+    );
 
     activePaces.push(adjustedPace);
     activeWeights.push(w);

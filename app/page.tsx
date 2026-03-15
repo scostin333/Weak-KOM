@@ -40,6 +40,7 @@ export default function HomePage() {
   const [prStatus,    setPrStatus   ] = useState<PRStatus>('idle');
   const [prCount,     setPrCount    ] = useState(0);
   const [mobileTab,   setMobileTab  ] = useState<'map' | 'list'>('map');
+  const [speedUnit,       setSpeedUnit      ] = useState<'mph' | 'kph'>('mph');
   const [windWeight,      setWindWeight     ] = useState(1.0);
   const [forecastSlot,    setForecastSlot   ] = useState<ForecastSlot | null>(null);
   const [forecastWind,    setForecastWind   ] = useState<WindData | null>(null);
@@ -275,6 +276,7 @@ export default function HomePage() {
         onSelect={setSelected}
         showPredictions={prStatus === 'ready'}
         crLabel={athlete?.sex === 'F' ? 'QOM' : 'KOM'}
+        speedUnit={speedUnit}
       />
     </>
   );
@@ -314,6 +316,23 @@ export default function HomePage() {
               {prStatus === 'error'   && '⚠ PR load failed'}
             </span>
           )}
+        </div>
+
+        {/* Speed unit toggle */}
+        <div className="flex items-center gap-1 bg-gray-700 rounded-lg p-0.5 mr-2">
+          {(['mph', 'kph'] as const).map(unit => (
+            <button
+              key={unit}
+              onClick={() => setSpeedUnit(unit)}
+              className={`px-2 py-0.5 rounded text-xs font-semibold transition-colors ${
+                speedUnit === unit
+                  ? 'bg-orange-500 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {unit}
+            </button>
+          ))}
         </div>
 
         <LoginButton athlete={athlete} onLogin={handleLogin} onLogout={handleLogout} />

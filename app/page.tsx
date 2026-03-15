@@ -377,28 +377,55 @@ export default function HomePage() {
         {/* Mobile segment list overlay */}
         {mobileTab === 'list' && (
           <div className="md:hidden absolute inset-0 z-[400] bg-gray-800 flex flex-col">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700 shrink-0 bg-gray-900">
+              <span className="text-sm font-bold text-white">Ranking</span>
+              <button
+                onClick={() => setMobileTab('map')}
+                className="flex items-center gap-1.5 text-xs text-orange-400 font-semibold px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/30"
+              >
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current">
+                  <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+                </svg>
+                Map
+              </button>
+            </div>
             {sidebarPanel}
           </div>
         )}
       </div>
 
       {/* ── Mobile bottom tab bar ── */}
-      <nav className="md:hidden flex shrink-0 bg-gray-800 border-t border-gray-700">
+      <nav className="md:hidden flex shrink-0 bg-gray-900 border-t border-gray-700 px-4 py-2 gap-2">
         <button
           onClick={() => setMobileTab('map')}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-            mobileTab === 'map' ? 'text-orange-400' : 'text-gray-400'
+          className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-colors ${
+            mobileTab === 'map'
+              ? 'bg-orange-500/20 text-orange-400'
+              : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Map
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+          </svg>
+          <span className="text-xs font-semibold">Map</span>
         </button>
         <button
           onClick={() => setMobileTab('list')}
-          className={`flex-1 py-3 text-sm font-semibold transition-colors ${
-            mobileTab === 'list' ? 'text-orange-400' : 'text-gray-400'
+          className={`flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-colors relative ${
+            mobileTab === 'list'
+              ? 'bg-orange-500/20 text-orange-400'
+              : 'text-gray-500 hover:text-gray-300'
           }`}
         >
-          Segments{segments.length > 0 ? ` (${segments.length})` : ''}
+          <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current">
+            <path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/>
+          </svg>
+          <span className="text-xs font-semibold">
+            Ranking{segments.length > 0 ? ` (${segments.length})` : ''}
+          </span>
+          {segments.length > 0 && mobileTab === 'map' && (
+            <span className="absolute top-1 right-3 w-2 h-2 rounded-full bg-orange-500" />
+          )}
         </button>
       </nav>
 

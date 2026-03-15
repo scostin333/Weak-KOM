@@ -145,6 +145,7 @@ export function scoreSegments(
     return {
       ...rest,
       bearing,
+      isLooped,
       tailwindComponent:  Math.round(tailwindComponent * 10) / 10,
       komWeaknessScore:   breakdown.total,
       komWeaknessDetail:  breakdown,

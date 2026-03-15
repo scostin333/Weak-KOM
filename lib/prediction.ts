@@ -13,6 +13,9 @@ import { AthletePREffort, PredictionResult, ScoredSegment } from '@/types';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SIGMA = 0.25;
+const RIGHT_TURN_PENALTY_SECS = 3.5;
+/** Minimum deflection angle (degrees) for a turn to count as a right-hand turn. */
+const RIGHT_TURN_MIN_DEG = 80;
 const MIN_WEIGHT = 0.05;
 const MIN_TOTAL_WEIGHT = 0.10;
 const GRADE_MIN = -5;
@@ -90,6 +93,47 @@ function calcConfidence(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Right-hand turn detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Counts the number of significant right-hand turns in a decoded GPS polyline.
+ * Uses the signed cross-product of consecutive bearing vectors to determine
+ * turn direction; only turns >= RIGHT_TURN_MIN_DEG are counted.
+ *
+ * Coordinate convention: lng = x (east +), lat = y (north +), which matches
+ * a standard right-handed Cartesian system so a clockwise (right) turn
+ * produces a negative cross-product.
+ */
+function countRightHandTurns(polyline: [number, number][]): number {
+  if (polyline.length < 3) return 0;
+  const minRad = (RIGHT_TURN_MIN_DEG * Math.PI) / 180;
+  let count = 0;
+
+  for (let i = 1; i < polyline.length - 1; i++) {
+    const [lat0, lng0] = polyline[i - 1];
+    const [lat1, lng1] = polyline[i];
+    const [lat2, lng2] = polyline[i + 1];
+
+    const dx1 = lng1 - lng0, dy1 = lat1 - lat0;
+    const dx2 = lng2 - lng1, dy2 = lat2 - lat1;
+
+    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if (len1 < 1e-9 || len2 < 1e-9) continue;
+
+    // cross < 0 → clockwise → right turn
+    const cross = dx1 * dy2 - dy1 * dx2;
+    const dot   = dx1 * dx2 + dy1 * dy2;
+    const angle = Math.atan2(Math.abs(cross), dot);
+
+    if (cross < 0 && angle >= minRad) count++;
+  }
+
+  return count;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -100,7 +144,7 @@ function calcConfidence(
  * Returns `null` if there are insufficient similar reference PRs.
  */
 export function predictSegmentTime(
-  target:     Pick<ScoredSegment, 'distance' | 'average_grade' | 'kom_time'>,
+  target:     Pick<ScoredSegment, 'distance' | 'average_grade' | 'kom_time' | 'polyline'>,
   references: AthletePREffort[],
 ): PredictionResult | null {
   if (!references.length) return null;
@@ -128,7 +172,8 @@ export function predictSegmentTime(
   if (totalWeight < MIN_TOTAL_WEIGHT) return null;
 
   const predictedPace = activePaces.reduce((s, p, i) => s + p * activeWeights[i], 0) / totalWeight;
-  const predictedTime = Math.round(target.distance / predictedPace);
+  const rightTurns    = target.polyline ? countRightHandTurns(target.polyline) : 0;
+  const predictedTime = Math.round(target.distance / predictedPace + rightTurns * RIGHT_TURN_PENALTY_SECS);
   const gapToKom      = predictedTime - target.kom_time;
 
   const confidence = calcConfidence(activePaces, activeWeights, totalWeight, activePaces.length);

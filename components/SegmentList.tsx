@@ -23,7 +23,7 @@ function WindBadge({ component, speedUnit }: { component: number; speedUnit: Spe
   const abs = Math.abs(component);
   const spd = speedUnit === 'mph'
     ? `${(abs * 0.6214).toFixed(1)} mph`
-    : `${abs} kph`;
+    : `${abs.toFixed(1)} kph`;
   if (component > 2)  return <span className="text-green-400">↑ {spd} tail</span>;
   if (component < -2) return <span className="text-red-400">↓ {spd} head</span>;
   return <span className="text-yellow-400">→ crosswind</span>;
